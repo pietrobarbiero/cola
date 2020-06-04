@@ -1,0 +1,4 @@
+include fexin/*.md
+include LICENSE.txt
+include requirements.txt
+include *.rst
