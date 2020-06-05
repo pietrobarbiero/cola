@@ -5,7 +5,8 @@ from fexin import Fexin, FHexin
 
 X, y = load_iris(return_X_y=True)
 X = StandardScaler().fit_transform(X[:, [0, 2]])
+# X = StandardScaler().fit_transform(X)
 
 model = FHexin()
-model.fit(X, num_epochs=200)
-model.plot(X, "FHexin", "FHexin.png")
+model.fit(X, num_epochs=500)
+model.plot(X, y, "FHexin", "FHexin.png")

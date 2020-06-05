@@ -39,5 +39,5 @@ class FHexin():
     def predict(self, X):
         return self.fexin_.predict(X)
 
-    def plot(self, X, title, file_path):
-        return self.fexin_.plot(X, title, file_path)
+    def plot(self, X, y=None, title="", file_path="fhexin.png"):
+        return self.fexin_.plot(X, y, title, file_path)
