@@ -18,7 +18,7 @@ class Fexin():
         self.optimizer = optimizer
         self.verbose = verbose
 
-    def fit(self, X, N, num_epochs=200, lr=0.001):
+    def fit(self, X, N, num_epochs=200, lr=0.001, beta_o=0.1):
         self.A_ = tf.convert_to_tensor(X.T, np.float32)
         self.E_ = np.zeros((N, N))
 
@@ -30,7 +30,7 @@ class Fexin():
         self.loss_value_ = np.inf
         # pbar = tqdm(range(num_epochs+1), disable=self.verbose)
         for epoch in range(num_epochs + 1):
-            loss_value, grads, Ei = _grad(self.kmodel, self.A_, self.E_, epoch)
+            loss_value, grads, Ei = _grad(self.kmodel, self.A_, self.E_, epoch, beta_o)
             self.optimizer_.apply_gradients(zip(grads, self.kmodel.trainable_variables))
             # if self.verbose:
             #     pbar.set_description(f"Epoch: {epoch} - Loss: {loss_value:.2f}")
@@ -44,6 +44,18 @@ class Fexin():
 
     def plot(self, X, y=None, title="", file_path="fexin.png"):
         Wa = self.predict(self.A_)
+
+        D = euclidean_distances(X, Wa)
+        N = self.E_.shape[0]
+        self.Ei_ = np.zeros((N, N))
+        s = np.argsort(D, axis=1)[:, :2]
+        for i in range(len(self.Ei_)):
+            si = s[s[:, 0] == i]
+            if len(si) > 0:
+                for j in set(si[:, 1]):
+                    k = sum(si[:, 1] == j)
+                    self.Ei_[i, j] += k  # alpha * (k - Et[i, j])
+                    self.Ei_[j, i] += k  # alpha * (k - Et[j, i])
 
         if X.shape[1] > 2:
             tsne = TSNE(n_components=2)
@@ -103,15 +115,17 @@ def _squared_dist(A, B):
     return row_norms_A - 2 * tf.matmul(A, tf.transpose(B)) + row_norms_B
 
 
-def _loss(X, output, Et, epoch):
+def _loss(X, output, Et, epoch, beta_o):
     A = tf.convert_to_tensor(tf.transpose(X), np.float32)
     D = _squared_dist(A, tf.transpose(output))
     d_min = tf.math.reduce_min(D, axis=1)
     d_max = tf.math.reduce_max(D, axis=1)
+    N = Et.shape[0]
+    Et = np.zeros((N, N))
 
     s = tf.argsort(D.numpy(), axis=1)[:, :2].numpy()
     extra_cost = 1
-    alpha = 0.9
+    alpha = 1
     for i in range(len(Et)):
         si = s[s[:, 0] == i]
         if len(si) == 0:
@@ -119,22 +133,25 @@ def _loss(X, output, Et, epoch):
         else:
             for j in set(si[:, 1]):
                 k = sum(si[:, 1] == j)
-                Et[i, j] += alpha * (k - Et[i, j])
-                Et[j, i] += alpha * (k - Et[j, i])
+                Et[i, j] += k # alpha * (k - Et[i, j])
+                Et[j, i] += k # alpha * (k - Et[j, i])
 
-    O = _squared_dist(output, output)
+    O = _squared_dist(output, output) + 0.01
     o_min = tf.math.reduce_min(O, axis=1) + 0.1
 
     E = tf.convert_to_tensor(Et, np.float32)
 
-    return extra_cost * (0.4 * tf.norm(d_min) +
+    return extra_cost * (
+                         0.4 * tf.norm(d_min) +
                          0.001 * tf.norm(d_max) +
-                         0.2 * 1/tf.norm(o_min) +
-                         0.4 * tf.norm(E)), \
+                         0.01 * tf.norm(D) +
+                         beta_o * 1/tf.norm(O) +
+                         0.4 * tf.norm(E)
+                        ), \
            Et
 
 
-def _grad(model, inputs, Et, epoch):
+def _grad(model, inputs, Et, epoch, beta_o):
     with tf.GradientTape() as tape:
-        loss_value, Et = _loss(inputs, model(inputs), Et, epoch)
+        loss_value, Et = _loss(inputs, model(inputs), Et, epoch, beta_o)
     return loss_value, tape.gradient(loss_value, model.trainable_variables), Et
