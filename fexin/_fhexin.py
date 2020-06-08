@@ -21,32 +21,41 @@ class FHexin():
             N_max = X.shape[0]
 
         if self.optimizer is None:
-            self.optimizer_ = tf.keras.optimizers.Adam(learning_rate=lr)
+            self.optimizer_ = tf.keras.optimizers.Adagrad(learning_rate=lr)
         else:
             self.optimizer_ = self.optimizer
 
         pbar = tqdm(range(N_min, N_max))
         for level in pbar:
-
+            ls = 0
+            best_ls = np.inf
+            best_exin = None
+            # for i in range(0, 300):
             y_idx = np.random.choice(range(X.shape[0]), size=level, replace=False)
             y = X[y_idx]
             input = tf.keras.layers.Input(shape=(X.shape[0],))
-            x = tf.keras.layers.Dense(10, activation='relu')(input)
+            x = tf.keras.layers.BatchNormalization()(input)
+            x = tf.keras.layers.Dense(10, activation='relu')(x)
             x = tf.keras.layers.Dense(10, activation='relu')(x)
             output = tf.keras.layers.Dense(level)(x)
             kmodel = tf.keras.Model(inputs=input, outputs=output)
             kmodel.compile(optimizer=self.optimizer_, loss="mse")
-            kmodel.fit(X.T, y.T, epochs=100, verbose=0)
+            kmodel.fit(X.T, y.T, epochs=20, verbose=0)
 
             fexin = Fexin(kmodel, optimizer=self.optimizer_, verbose=False)
-            fexin.fit(X, N=level, num_epochs=num_epochs, beta_o=beta_o)
+            while fexin.run_again:
+                fexin.fit(X, N=level, num_epochs=num_epochs, beta_o=beta_o)
             loss = fexin.loss_value_
 
-            pbar.set_description(f"Level: {level} - Loss: {loss:.2f}")
+            # if loss < best_ls:
+            best_ls = loss
+            best_exin = fexin
 
-            if loss < self.best_loss_:
-                self.best_loss_ = loss
-                self.fexin_ = fexin
+            pbar.set_description(f"Level: {level} - Loss: {best_ls:.2f}")
+
+            if best_ls < self.best_loss_:
+                self.best_loss_ = best_ls
+                self.fexin_ = best_exin
             else:
                 break
 

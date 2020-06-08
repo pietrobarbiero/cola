@@ -8,5 +8,5 @@ X = StandardScaler().fit_transform(X[:, [0, 2]])
 # X = StandardScaler().fit_transform(X)
 
 model = FHexin()
-model.fit(X, num_epochs=200, beta_o=0.2)
+model.fit(X, N_min=10, N_max=11, num_epochs=400, lr=0.01)
 model.plot(X, y, "FHexin", "FHexin.png")
