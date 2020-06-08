@@ -2,17 +2,17 @@ from tqdm import tqdm
 import numpy as np
 import tensorflow as tf
 
-from ._fexin import Fexin
+from ._gexin import Gexin
 
 
-class FHexin():
+class GHexin():
     def __init__(self, optimizer=None, verbose=True):
         self.optimizer = optimizer
         self.verbose = verbose
 
     def fit(self, X, N_min=None, N_max=None, num_epochs=200, lr=0.01, beta_o=0.1):
         self.best_loss_ = np.inf
-        self.fexin_ = None
+        self.gexin_ = None
 
         if N_min is None:
             N_min = 2
@@ -42,27 +42,27 @@ class FHexin():
             kmodel.compile(optimizer=self.optimizer_, loss="mse")
             kmodel.fit(X.T, y.T, epochs=20, verbose=0)
 
-            fexin = Fexin(kmodel, optimizer=self.optimizer_, verbose=False)
-            while fexin.run_again:
-                fexin.fit(X, N=level, num_epochs=num_epochs, beta_o=beta_o)
-            loss = fexin.loss_value_
+            gexin = Gexin(kmodel, optimizer=self.optimizer_, verbose=False)
+            while gexin.run_again:
+                gexin.fit(X, N=level, num_epochs=num_epochs, beta_o=beta_o)
+            loss = gexin.loss_value_
 
             # if loss < best_ls:
             best_ls = loss
-            best_exin = fexin
+            best_exin = gexin
 
             pbar.set_description(f"Level: {level} - Loss: {best_ls:.2f}")
 
             if best_ls < self.best_loss_:
                 self.best_loss_ = best_ls
-                self.fexin_ = best_exin
+                self.gexin_ = best_exin
             else:
                 break
 
         return self
 
     def predict(self, X):
-        return self.fexin_.predict(X)
+        return self.gexin_.predict(X)
 
     def plot(self, X, y=None, title="", file_path="fhexin.png"):
-        return self.fexin_.plot(X, y, title, file_path)
+        return self.gexin_.plot(X, y, title, file_path)

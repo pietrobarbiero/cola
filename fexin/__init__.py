@@ -1,7 +1,9 @@
+from ._gexin import Gexin
+from ._ghexin import GHexin
 from ._fexin import Fexin
-from ._fhexin import FHexin
 
 __all__ = [
+    "Gexin",
+    "GHexin",
     "Fexin",
-    "FHexin",
 ]

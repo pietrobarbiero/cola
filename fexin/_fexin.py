@@ -1,76 +1,110 @@
-import gc
-
-import tensorflow as tf
-import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
-from sklearn.decomposition import PCA
+from keras.utils import plot_model
 from sklearn.manifold import TSNE
-import networkx as nx
 from sklearn.metrics import euclidean_distances
-from sklearn.preprocessing import MinMaxScaler
 from tqdm import tqdm
+import numpy as np
+import tensorflow as tf
 
 
 class Fexin():
-    def __init__(self, kmodel, optimizer=None, verbose=True):
-        self.kmodel = kmodel
+    def __init__(self, optimizer=None, verbose=True):
         self.optimizer = optimizer
         self.verbose = verbose
-        self.run_again = True
 
-    def fit(self, X, N, num_epochs=200, lr=0.001, beta_o=0.1):
-        self.A_ = tf.convert_to_tensor(X.T, np.float32)
-        self.E_ = np.zeros((N, N))
+    def fit(self, X_list, N_min=None, N_max=None, num_epochs=200, lr=0.01, beta_o=0.1):
+        n = X_list[0].shape[0]
 
+        self.best_loss_ = np.inf
+        self.gexin_ = None
         if self.optimizer is None:
-            self.optimizer_ = tf.keras.optimizers.Adam(learning_rate=lr)
+            self.optimizer_ = tf.keras.optimizers.Adagrad(learning_rate=lr)
         else:
             self.optimizer_ = self.optimizer
 
-        self.losses_ = {
-            "min_in": [],
-            "max_out": [],
-            "d_min": [],
-            # "first": [],
-            "d_max": [],
-            "out": [],
-            "E": [],
-            # "all": [],
-        }
+        if N_min is None:
+            N_min = 2
 
-        self.loss_value_ = np.inf
-        self.run_again = False
-        pbar = tqdm(range(num_epochs+1), disable=self.verbose)
-        for epoch in pbar: #range(num_epochs + 1):
-            loss_value, grads, Ei, run_again = self._grad(epoch, beta_o)
-            self.optimizer_.apply_gradients(zip(grads, self.kmodel.trainable_variables))
-            pbar.set_description(f"Epoch: {epoch} - Loss: {loss_value:.2f}")
-            if loss_value < self.loss_value_:
-                self.Ei_ = Ei
-                self.loss_value_ = loss_value
-            if run_again:
-                self.run_again = True
-                return self
+        if N_max is None:
+            N_max = n
+
+        # pbar = tqdm(range(N_min, N_max))
+        for level in range(N_min, N_max): #pbar:
+            self.E_ = np.zeros((level, level))
+            self.A_list_ = []
+            xo_list = []
+            input_list = []
+            output_list = []
+            for X in X_list:
+                input = tf.keras.layers.Input(shape=(X.shape[0],))
+                x = tf.keras.layers.BatchNormalization()(input)
+                x = tf.keras.layers.Dense(10, activation='relu')(x)
+                x = tf.keras.layers.Dense(10, activation='relu')(x)
+                output = tf.keras.layers.Dense(level)(x)
+                input_list.append(input)
+                xo_list.append(x)
+                output_list.append(output)
+                self.A_list_.append(tf.convert_to_tensor(X.T, np.float32))
+            self.kmodel = tf.keras.Model(inputs=input_list, outputs=output_list)
+            tf.keras.utils.plot_model(self.kmodel, to_file='model.png', show_shapes=True)
+
+            pbar = tqdm(range(num_epochs + 1), disable=self.verbose)
+            for epoch in pbar:  # range(num_epochs + 1):
+                loss_value, grads, Ei = self._grad(epoch, beta_o)
+                self.optimizer_.apply_gradients(zip(grads, self.kmodel.trainable_variables))
+                pbar.set_description(f"Epoch: {epoch} - Loss: {loss_value:.2f}")
+                if loss_value < self.best_loss_:
+                    self.Ei_ = Ei
+                    self.best_loss_ = loss_value
+
         return self
 
-    def predict(self, X):
-        return self.kmodel(X).numpy().T
+    def predict(self, X_list):
+        return self.kmodel(X_list).numpy().T
 
-    def plot(self, X, y=None, title="", file_path="fexin.png"):
-        Wa = self.predict(self.A_)
+    def _grad(self, epoch, beta_o):
+        with tf.GradientTape() as tape:
+            loss_value, Ei = self._loss(self.kmodel(self.A_list_), epoch, beta_o)
+        return loss_value, tape.gradient(loss_value, self.kmodel.trainable_variables), Ei
 
-        D = euclidean_distances(X, Wa)
+    def _loss(self, output_list, epoch, beta_o):
         N = self.E_.shape[0]
-        self.Ei_ = np.zeros((N, N))
-        s = np.argsort(D, axis=1)[:, :2]
-        for i in range(len(self.Ei_)):
-            si = s[s[:, 0] == i]
-            if len(si) > 0:
-                for j in set(si[:, 1]):
-                    k = sum(si[:, 1] == j)
-                    self.Ei_[i, j] += k  # alpha * (k - Et[i, j])
-                    self.Ei_[j, i] += k  # alpha * (k - Et[j, i])
+        Et = np.zeros((N, N))
+        cost = tf.Variable(0, dtype=np.float32)
+        for q, (A, output) in enumerate(zip(self.A_list_, output_list)):
+            A = tf.transpose(A)
+            D = _squared_dist(A, tf.transpose(output))
+            d_min = tf.math.reduce_min(D, axis=1)
+
+            s = tf.argsort(D.numpy(), axis=1)[:, :2].numpy()
+            min_inside = tf.Variable(tf.zeros((N,), dtype=np.float32))
+            max_outside = tf.Variable(tf.zeros((N,), dtype=np.float32))
+            d_max = tf.Variable(tf.zeros((N,), dtype=np.float32))
+            for i in range(N):
+                idx = s[:, 0] == i
+                si = s[idx]
+                if len(si) > 0:
+                    a = A[idx]
+                    b = A[~idx]
+                    d_max[i].assign(tf.math.reduce_max(_squared_dist(a, tf.expand_dims(output[:, i], axis=0))))
+                    min_inside[i].assign(tf.reduce_max(_squared_dist(a, a)))
+                    max_outside[i].assign(tf.reduce_min(_squared_dist(a, b)))
+                    for j in set(si[:, 1]):
+                        k = sum(si[:, 1] == j)
+                        Et[i, j] += k
+                        Et[j, i] += k
+
+            E = tf.convert_to_tensor(Et, np.float32)
+
+            Fn = tf.reduce_max(min_inside)
+            Fd = tf.reduce_max(max_outside)
+            Eq = tf.norm(d_min)
+            Eq2 = tf.norm(d_max)
+            El = tf.norm(E, 1)
+            cost = tf.add(Fn / Fd + Eq + Eq2 + El, cost)
+        return cost, Et
+
+    def plot(self, X_list, y=None, title="", file_path="fexin.png"):
+        Wa = self.predict(self.A_list_)
 
         if X.shape[1] > 2:
             tsne = TSNE(n_components=2)
@@ -134,83 +168,6 @@ class Fexin():
         plt.close()
         gc.collect()
 
-
-    def _loss(self, output, epoch, beta_o):
-        A = tf.convert_to_tensor(tf.transpose(self.A_), np.float32)
-        D = _squared_dist(A, tf.transpose(output))
-        d_min = tf.math.reduce_min(D, axis=1)
-        # d_max = tf.math.reduce_max(D, axis=1)
-        N = self.E_.shape[0]
-        Et = np.zeros((N, N))
-
-        s = tf.argsort(D.numpy(), axis=1)[:, :2].numpy()
-        extra_cost = False
-        alpha = 1
-        min_inside = tf.Variable(tf.zeros((N,), dtype=np.float32))
-        max_outside = tf.Variable(tf.zeros((N,), dtype=np.float32))
-        d_max = tf.Variable(tf.zeros((N,), dtype=np.float32))
-        for i in range(N):
-            idx = s[:, 0] == i
-            si = s[idx]
-            if len(si) == 0:
-                extra_cost = False
-            else:
-                a = A[idx]
-                b = A[~idx]
-                d_max[i].assign(tf.math.reduce_max(_squared_dist(a, tf.expand_dims(output[:, i], axis=0))))
-                min_inside[i].assign(tf.reduce_max(_squared_dist(a, a)))
-                max_outside[i].assign(tf.reduce_min(_squared_dist(a, b)))
-                for j in set(si[:, 1]):
-                    k = sum(si[:, 1] == j)
-                    Et[i, j] += k  # alpha * (k - Et[i, j])
-                    Et[j, i] += k  # alpha * (k - Et[j, i])
-
-        O = _squared_dist(output, output) + 0.01
-        o_min = tf.math.reduce_min(O, axis=1) + 0.1
-
-        E = tf.convert_to_tensor(Et, np.float32)
-        # min_inside = tf.convert_to_tensor(np.array(min_inside), np.float32)
-        # max_outside = tf.convert_to_tensor(np.array(max_outside), np.float32)
-
-        if epoch == 0:
-            self.min_in_0_ = 1 * tf.reduce_max(min_inside)
-            self.max_out_0_ = 1 * tf.reduce_max(max_outside)
-            # self.d_min_0_ = 1 * tf.norm(d_min, 2)
-            # self.d_max_0_ = 1 * tf.norm(d_max, 2)
-            self.d_min_0_ = 1 * tf.norm(d_min)
-            self.d_max_0_ = 1 * tf.norm(d_max)
-            self.out_0_ = tf.norm(O, 2)
-            self.El_0_ = 1 * tf.norm(E, 1)
-
-        min_in = 1 * tf.reduce_max(min_inside) / self.min_in_0_
-        max_out = 1 * tf.reduce_max(max_outside) / self.max_out_0_
-        # d_min = 1 * tf.norm(d_min, 2) / self.d_min_0_ # più è piccola più il vincente è vicino
-        # d_max = 1 * tf.norm(d_max, 2) / self.d_max_0_
-        d_min = 1 * tf.norm(d_min) / self.d_min_0_ # più è piccola più il vincente è vicino
-        d_max = 1 * tf.norm(d_max) / self.d_max_0_
-        # out = tf.norm(O, 2) / self.out_0_ # più è piccola più i neuroni sono lontani
-        # El = 1 * tf.norm(tf.cast(tf.not_equal(E, 0), dtype='float32')) / self.El_0_
-        El = 1 * tf.norm(E, 1) / self.El_0_
-        # 0.01 * tf.norm(D) / self.losses_["d_max"]
-        # cost = min_in / max_out * d_min + d_max + out + El
-        # cost = min_in / max_out + d_min + El
-        cost = min_in / max_out + d_min + d_max + El
-
-        self.losses_["min_in"].append(min_in.numpy())
-        self.losses_["max_out"].append(max_out.numpy())
-        self.losses_["d_min"].append(d_min.numpy())
-        self.losses_["d_max"].append(d_max.numpy())
-        # self.losses_["out"].append(out.numpy())
-        self.losses_["E"].append(El.numpy())
-        # self.losses_["first"].append(0.4 * tf.norm(d_min, 2).numpy())
-        # self.losses_["all"].append(cost.numpy())
-
-        return cost, Et, extra_cost
-
-    def _grad(self, epoch, beta_o):
-        with tf.GradientTape() as tape:
-            loss_value, Ei, run_again = self._loss(self.kmodel(self.A_), epoch, beta_o)
-        return loss_value, tape.gradient(loss_value, self.kmodel.trainable_variables), Ei, run_again
 
 
 def _squared_dist(A, B):
