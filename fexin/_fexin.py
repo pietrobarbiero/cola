@@ -55,11 +55,11 @@ class Fexin():
 
             pbar = tqdm(range(num_epochs + 1))
             for epoch in pbar:  # range(num_epochs + 1):
-                loss_value, grads, Ei = self._grad(epoch, beta_o)
+                loss_value, grads, Ei_list = self._grad(epoch, beta_o)
                 self.optimizer_.apply_gradients(zip(grads, self.kmodel.trainable_variables))
                 pbar.set_description(f"Epoch: {epoch} - Loss: {loss_value:.2f}")
                 if loss_value < self.best_loss_:
-                    self.Ei_ = Ei
+                    self.Ei_list_ = Ei_list
                     self.best_loss_ = loss_value
 
         return self
@@ -69,14 +69,15 @@ class Fexin():
 
     def _grad(self, epoch, beta_o):
         with tf.GradientTape() as tape:
-            loss_value, Ei = self._loss(self.kmodel(self.A_list_), epoch, beta_o)
-        return loss_value, tape.gradient(loss_value, self.kmodel.trainable_variables), Ei
+            loss_value, Ei_list = self._loss(self.kmodel(self.A_list_), epoch, beta_o)
+        return loss_value, tape.gradient(loss_value, self.kmodel.trainable_variables), Ei_list
 
     def _loss(self, output_list, epoch, beta_o):
         N = self.E_.shape[0]
-        Et = np.zeros((N, N))
         cost = tf.Variable(0, dtype=np.float32)
+        Et_list = []
         for q, (A, output) in enumerate(zip(self.A_list_, output_list)):
+            Et = np.zeros((N, N))
             A = tf.transpose(A)
             D = _squared_dist(A, tf.transpose(output))
             d_min = tf.math.reduce_min(D, axis=1)
@@ -99,6 +100,7 @@ class Fexin():
                         Et[i, j] += k
                         Et[j, i] += k
 
+            Et_list.append(Et)
             E = tf.convert_to_tensor(Et, np.float32)
 
             Fn = tf.reduce_max(min_inside)
@@ -107,76 +109,79 @@ class Fexin():
             Eq2 = tf.norm(d_max)
             El = tf.norm(E, 1)
             cost = tf.add(Fn / Fd + Eq + Eq2 + El, cost)
-        return cost, Et
+        return cost, Et_list
 
     def plot(self, X_list, y=None, title="", file_path="fexin.png"):
         Wa_list = self.predict(self.A_list_)
         N = self.E_.shape[0]
         cmap = sns.color_palette(sns.color_palette("hls", len(set(y))))
-        node_colors = {}
-        for i in range(N):
-            node_colors[i] = []
-        has_samples = []
-        for q, (A, output) in enumerate(zip(self.A_list_, Wa_list)):
+        n = X_list[0].shape[0]
+        A_samples = np.zeros((n, n))
+
+        for k, (A, X, Wa, Ei) in enumerate(zip(self.A_list_, X_list, Wa_list, self.Ei_list_)):
+            node_colors = {}
+            for i in range(N):
+                node_colors[i] = []
+            has_samples = []
             A = tf.transpose(A)
-            D = _squared_dist(A, tf.transpose(output))
+            D = _squared_dist(A, tf.transpose(Wa))
             s = tf.argsort(D.numpy(), axis=1)[:, :2].numpy()
             for i in range(N):
                 idx = s[:, 0] == i
                 if sum(idx) > 0:
                     has_samples.append(True)
                     yi = y[idx]
-                    node_colors[i].extend(yi)
+                    most_common_label = collections.Counter(yi).most_common(1)[0][0]
+                    node_colors[i] = cmap[most_common_label]
                 else:
                     has_samples.append(False)
-        for i in range(N):
-            if has_samples[i]:
-                most_common_label = collections.Counter(node_colors[i]).most_common(1)[0][0]
-                node_colors[i] = cmap[most_common_label]
 
-        G = nx.Graph()
-        we = []
-        for i in range(0, self.Ei_.shape[0]):
-            for j in range(i+1, self.Ei_.shape[1]):
-                if self.Ei_[i, j] > 0 and has_samples[i] and has_samples[j]:
-                    we.append((i, j, self.Ei_[i, j]))
-        G.add_weighted_edges_from(we)
-        w = []
-        for e in G.edges:
-            w.append(self.Ei_[e[0], e[1]])
-        wd = np.array(w)
-        widths = MinMaxScaler(feature_range=(0, 5)).fit_transform(wd.reshape(-1, 1)).squeeze().tolist()
+            G = nx.Graph()
+            we = []
+            for i in range(0, Ei.shape[0]):
+                for j in range(i+1, Ei.shape[1]):
+                    if Ei[i, j] > 0 and has_samples[i] and has_samples[j]:
+                        we.append((i, j, Ei[i, j]))
+            G.add_weighted_edges_from(we)
+            w = []
+            for e in G.edges:
+                w.append(Ei[e[0], e[1]])
+            wd = np.array(w)
+            widths = MinMaxScaler(feature_range=(0, 5)).fit_transform(wd.reshape(-1, 1)).squeeze().tolist()
 
-        node_colors_list = []
-        for node in G.nodes:
-            node_colors_list.append(node_colors[node])
+            node_colors_list = []
+            for node in G.nodes:
+                node_colors_list.append(node_colors[node])
 
-        pos = nx.drawing.layout.spring_layout(G)
-        plt.figure(figsize=[5, 4])
-        c = '#00838F'
-        nx.draw_networkx_nodes(G, pos=pos, node_size=600, node_color=node_colors_list)
-        nx.draw_networkx(G, pos=pos, node_size=0, width=0, font_color='white', font_weight="bold")
-        nx.draw_networkx_edges(G, pos=pos, width=widths, edge_color=c)
-        plt.title(title)
-        plt.savefig(file_path)
-        plt.show()
-        plt.clf()
-        plt.close()
-        gc.collect()
+            pos = nx.drawing.layout.spring_layout(G)
+            plt.figure(figsize=[5, 4])
+            c = '#00838F'
+            nx.draw_networkx_nodes(G, pos=pos, node_size=600, node_color=node_colors_list)
+            nx.draw_networkx(G, pos=pos, node_size=0, width=0, font_color='white', font_weight="bold")
+            nx.draw_networkx_edges(G, pos=pos, width=widths, edge_color=c)
+            plt.title(title)
+            plt.savefig(f"{file_path[:-3]}_G_{k}.png")
+            plt.show()
+            plt.clf()
+            plt.close()
+            gc.collect()
 
-        for k, (X, Wa) in enumerate(zip(X_list, Wa_list)):
-            if X.shape[1] > 2:
-                tsne = TSNE(n_components=2)
+            if X.shape[1] >= 2:
+                tsne = TSNE(n_components=2, random_state=42)
                 M_list = [X]
-                for i in range(Wa.shape[0]):
-                    M_list.append(Wa[i].reshape(1, -1))
+                nodes_idx = []
+                nodes_number = []
+                for i, node in enumerate(G.nodes):
+                    nodes_idx.append(i)
+                    nodes_number.append(node)
+                    M_list.append(Wa[:, node].numpy().reshape(1, -1))
                 M = np.concatenate(M_list)
                 Mp = tsne.fit_transform(M)
                 Xp = Mp[:X.shape[0]]
                 Wp = Mp[X.shape[0]:]
                 pos = {}
-                for i in G.nodes:
-                    pos[i] = Wp[i].reshape(1, -1)[0]
+                for i in range(len(Wp)):
+                    pos[nodes_number[i]] = Wp[nodes_idx[i]].reshape(1, -1)[0]
             else:
                 Xp = X
                 pos = {}
@@ -198,6 +203,43 @@ class Fexin():
             plt.clf()
             plt.close()
             gc.collect()
+
+            for i in range(N):
+                idx = s[:, 0] == i
+                idx = np.argwhere(idx).squeeze()
+                if len(idx) > 0:
+                    for q in idx:
+                        for w in idx:
+                            A_samples[q, w] += 1
+
+        G = nx.Graph()
+        we = []
+        for i in range(0, A_samples.shape[0]):
+            for j in range(i + 1, A_samples.shape[1]):
+                if A_samples[i, j] > 0:
+                    we.append((i, j, A_samples[i, j]))
+        G.add_weighted_edges_from(we)
+        w = []
+        for e in G.edges:
+            w.append(A_samples[e[0], e[1]])
+        wd = np.array(w)
+        widths = MinMaxScaler(feature_range=(0.1, 1)).fit_transform(wd.reshape(-1, 1)).squeeze().tolist()
+
+        node_colors_list = []
+        for node in G.nodes:
+            node_colors_list.append(cmap[y[node]])
+
+        pos = nx.drawing.layout.spring_layout(G, seed=42)
+        plt.figure(figsize=[5, 4])
+        c = '#00838F'
+        nx.draw_networkx_nodes(G, pos=pos, node_size=10, node_color=node_colors_list)
+        nx.draw_networkx_edges(G, pos=pos, width=widths, edge_color=c)
+        plt.title(title)
+        plt.savefig(f"{file_path[:-3]}_samples.png")
+        plt.show()
+        plt.clf()
+        plt.close()
+        gc.collect()
 
 
 def _squared_dist(A, B):
