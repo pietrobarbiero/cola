@@ -9,9 +9,10 @@ X2 = StandardScaler().fit_transform(X[:, [1, 3]])
 # X = StandardScaler().fit_transform(X)
 
 # model = GHexin()
-# model.fit(X1, N_min=10, N_max=11, num_epochs=400, lr=0.01)
-# model.plot(X, y, "GHexin", "GHexin.png")
+# # model.fit(X1, N_min=10, N_max=11, num_epochs=400, lr=0.01)
+# model.fit(X1, N_min=10, N_max=11, num_epochs=1, lr=0.01)
+# model.plot(X1, y, "GHexin", "GHexin.png")
 
 model = Fexin()
 model.fit([X1, X2], N_min=10, N_max=11, num_epochs=400, lr=0.01)
-# model.plot(X, y, "Fexin", "Fexin.png")
+model.plot([X1, X2], y, "Fexin", "Fexin.png")
