@@ -206,11 +206,11 @@ class Fexin():
 
             for i in range(N):
                 idx = s[:, 0] == i
-                idx = np.argwhere(idx).squeeze()
+                idx = np.argwhere(idx)
                 if len(idx) > 0:
                     for q in idx:
                         for w in idx:
-                            A_samples[q, w] += 1
+                            A_samples[q[0], w[0]] += 1
 
         G = nx.Graph()
         we = []
