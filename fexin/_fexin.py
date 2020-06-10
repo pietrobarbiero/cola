@@ -153,56 +153,57 @@ class Fexin():
             for node in G.nodes:
                 node_colors_list.append(node_colors[node])
 
-            pos = nx.drawing.layout.spring_layout(G)
-            plt.figure(figsize=[5, 4])
-            c = '#00838F'
-            nx.draw_networkx_nodes(G, pos=pos, node_size=600, node_color=node_colors_list)
-            nx.draw_networkx(G, pos=pos, node_size=0, width=0, font_color='white', font_weight="bold")
-            nx.draw_networkx_edges(G, pos=pos, width=widths, edge_color=c)
-            plt.title(title)
-            plt.savefig(f"{file_path[:-3]}_G_{k}.png")
-            plt.show()
-            plt.clf()
-            plt.close()
-            gc.collect()
+            if self.verbose:
+                pos = nx.drawing.layout.spring_layout(G)
+                plt.figure(figsize=[5, 4])
+                c = '#00838F'
+                nx.draw_networkx_nodes(G, pos=pos, node_size=600, node_color=node_colors_list)
+                nx.draw_networkx(G, pos=pos, node_size=0, width=0, font_color='white', font_weight="bold")
+                nx.draw_networkx_edges(G, pos=pos, width=widths, edge_color=c)
+                plt.title(title)
+                plt.savefig(f"{file_path[:-3]}_G_{k}.png")
+                plt.show()
+                plt.clf()
+                plt.close()
+                gc.collect()
 
-            if X.shape[1] >= 2:
-                tsne = TSNE(n_components=2, random_state=42)
-                M_list = [X]
-                nodes_idx = []
-                nodes_number = []
-                for i, node in enumerate(G.nodes):
-                    nodes_idx.append(i)
-                    nodes_number.append(node)
-                    M_list.append(Wa[:, node].numpy().reshape(1, -1))
-                M = np.concatenate(M_list)
-                Mp = tsne.fit_transform(M)
-                Xp = Mp[:X.shape[0]]
-                Wp = Mp[X.shape[0]:]
-                pos = {}
-                for i in range(len(Wp)):
-                    pos[nodes_number[i]] = Wp[nodes_idx[i]].reshape(1, -1)[0]
-            else:
-                Xp = X
-                pos = {}
-                for i in G.nodes:
-                    pos[i] = Wa[:, i].numpy()
-            plt.figure(figsize=[5, 4])
-            if y is not None:
-                cmap = sns.color_palette(sns.color_palette("hls", len(set(y))))
-                sns.scatterplot(Xp[:, 0], Xp[:, 1], hue=y, palette=cmap, hue_order=set(y), alpha=0.8)
-            else:
-                sns.scatterplot(Xp[:, 0], Xp[:, 1])
-            c = '#00838F'
-            nx.draw_networkx_nodes(G, pos=pos, node_size=600, node_color=c)
-            nx.draw_networkx(G, pos=pos, node_size=0, width=0, font_color='white', font_weight="bold")
-            nx.draw_networkx_edges(G, pos=pos, width=widths, edge_color=c)
-            plt.title(title)
-            plt.savefig(f"{file_path[:-3]}_{k}.png")
-            plt.show()
-            plt.clf()
-            plt.close()
-            gc.collect()
+                if X.shape[1] > 2:
+                    tsne = TSNE(n_components=2, random_state=42)
+                    M_list = [X]
+                    nodes_idx = []
+                    nodes_number = []
+                    for i, node in enumerate(G.nodes):
+                        nodes_idx.append(i)
+                        nodes_number.append(node)
+                        M_list.append(Wa[:, node].numpy().reshape(1, -1))
+                    M = np.concatenate(M_list)
+                    Mp = tsne.fit_transform(M)
+                    Xp = Mp[:X.shape[0]]
+                    Wp = Mp[X.shape[0]:]
+                    pos = {}
+                    for i in range(len(Wp)):
+                        pos[nodes_number[i]] = Wp[nodes_idx[i]].reshape(1, -1)[0]
+                else:
+                    Xp = X
+                    pos = {}
+                    for i in G.nodes:
+                        pos[i] = Wa[:, i].numpy()
+                plt.figure(figsize=[5, 4])
+                if y is not None:
+                    cmap = sns.color_palette(sns.color_palette("hls", len(set(y))))
+                    sns.scatterplot(Xp[:, 0], Xp[:, 1], hue=y, palette=cmap, hue_order=set(y), alpha=0.8)
+                else:
+                    sns.scatterplot(Xp[:, 0], Xp[:, 1])
+                c = '#00838F'
+                nx.draw_networkx_nodes(G, pos=pos, node_size=600, node_color=c)
+                nx.draw_networkx(G, pos=pos, node_size=0, width=0, font_color='white', font_weight="bold")
+                nx.draw_networkx_edges(G, pos=pos, width=widths, edge_color=c)
+                plt.title(title)
+                plt.savefig(f"{file_path[:-3]}_{k}.png")
+                plt.show()
+                plt.clf()
+                plt.close()
+                gc.collect()
 
             for i in range(N):
                 idx = s[:, 0] == i
@@ -235,11 +236,13 @@ class Fexin():
         nx.draw_networkx_nodes(G, pos=pos, node_size=10, node_color=node_colors_list)
         nx.draw_networkx_edges(G, pos=pos, width=widths, edge_color=c)
         plt.title(title)
-        plt.savefig(f"{file_path[:-3]}_samples.png")
+        plt.savefig(f"{file_path[:-4]}_samples.png")
         plt.show()
         plt.clf()
         plt.close()
         gc.collect()
+
+        self.A_samples_ = A_samples
 
 
 def _squared_dist(A, B):
