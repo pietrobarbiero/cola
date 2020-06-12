@@ -4,15 +4,13 @@ from sklearn.preprocessing import StandardScaler
 from fexin import Gexin, GHexin, Fexin
 
 X, y = load_iris(return_X_y=True)
-X1 = StandardScaler().fit_transform(X[:, [0, 2]])
-X2 = StandardScaler().fit_transform(X[:, [1, 3]])
-# X = StandardScaler().fit_transform(X)
+X = StandardScaler().fit_transform(X)
 
-# model = GHexin()
-# # model.fit(X1, N_min=10, N_max=11, num_epochs=400, lr=0.01)
-# model.fit(X1, N_min=10, N_max=11, num_epochs=1, lr=0.01)
-# model.plot(X1, y, "GHexin", "GHexin.png")
-
-model = Fexin(verbose=True)
-model.fit([X1, X2], N_min=10, N_max=11, num_epochs=100, lr=0.01)
-model.plot([X1, X2], y, "Fexin", "Fexin.png")
+N = 10
+model = Gexin(verbose=True)
+model.fit(X, N=N, num_epochs=100, lr=0.01)
+model.compute_sample_graph()
+model.compute_graph()
+model.plot_adjacency_matrix()
+model.plot_graph(y)
+model.plot_sample_graph(y)
