@@ -42,7 +42,7 @@ datasets = [
 
 
 def main():
-    results_dir = "./results"
+    results_dir = "results-clustering"
     if not os.path.exists(results_dir):
         os.makedirs(results_dir)
 

@@ -10,11 +10,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-from dtl import Gexin
+from dtl import DeepCompetitiveLayer
 
 
 def main():
-    results_dir = "./results"
+    results_dir = "results"
     if not os.path.exists(results_dir):
         os.makedirs(results_dir)
 
@@ -42,11 +42,11 @@ def main():
     # plt.show()
 
     datasets = {
-        # "gabri": (X_gabri, y_gabri),
-        # "noisy_circles": noisy_circles,
-        # "noisy_moons": noisy_moons,
+        "gabri": (X_gabri, y_gabri),
+        "noisy_circles": noisy_circles,
+        "noisy_moons": noisy_moons,
         "blobs": blobs,
-        # "aniso": aniso,
+        "aniso": aniso,
         # "varied": varied,
     }
     # for dataset, data in datasets.items():
@@ -62,14 +62,14 @@ def main():
         X = StandardScaler().fit_transform(X)
 
         N = 40
-        model = Gexin(verbose=False)
-        model.fit(X, N=N, num_epochs=400, lr=0.0008)
-        model.compute_sample_graph()
+        model = DeepCompetitiveLayer(verbose=False)
+        model.fit(X, N=N, num_epochs=400, lr=0.01)
+        # model.compute_sample_graph()
         model.compute_graph()
         # model.plot_adjacency_matrix()
         model.plot_graph(y, os.path.join(results_dir, f"{dataset}.pdf"))
-        model.plot_sample_graph(y, os.path.join(results_dir, f"{dataset}_samples.pdf"))
-        # model.plot_graph(y, os.path.join(results_dir, f"{dataset}.png"))
+        # model.plot_sample_graph(y, os.path.join(results_dir, f"{dataset}_samples.pdf"))
+        model.plot_graph(y, os.path.join(results_dir, f"{dataset}.png"))
         # model.plot_sample_graph(y, os.path.join(results_dir, f"{dataset}_samples.png"))
         # pd.DataFrame(model.adjacency_matrix_).to_csv(os.path.join(results_dir, f"{dataset}.csv"))
         # pd.DataFrame(model.centroids_).to_csv(os.path.join(results_dir, f"{dataset}_centroids.csv"))

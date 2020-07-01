@@ -1,13 +1,9 @@
-from ._gexin import Gexin
-from ._ghexin import GHexin
-from ._fexin import Fexin
-from ._fexin2 import Fexin2
-from ._gexin_mlp import GexinMLP
+from .clustering._dtc import DeepTopologicalClustering
+from .clustering._dcl import DeepCompetitiveLayer
+from ._data_fusion import Fexin
 
 __all__ = [
-    "Gexin",
-    "GexinMLP",
-    "GHexin",
+    "DeepTopologicalClustering",
+    "DeepCompetitiveLayer",
     "Fexin",
-    "Fexin2",
 ]
