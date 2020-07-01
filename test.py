@@ -1,7 +1,7 @@
 import tensorflow as tf
 from sklearn.datasets import load_iris
 from sklearn.preprocessing import StandardScaler
-from fexin import Gexin, GHexin, Fexin
+from dtl import Gexin, GHexin, Fexin
 
 X, y = load_iris(return_X_y=True)
 X = StandardScaler().fit_transform(X)

@@ -7,8 +7,10 @@ from sklearn.preprocessing import StandardScaler
 from tqdm import tqdm
 import pandas as pd
 import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
 
-from fexin import Gexin
+from dtl import Gexin
 
 
 def main():
@@ -31,14 +33,26 @@ def main():
                         cluster_std=[1.0, 2.5, 0.5],
                         random_state=random_state)
 
+    y = np.asarray([i for i in range(1000)])
+    x = np.asarray([i % 4 for i in range(1000)])
+    X_gabri = np.vstack([x, y]).T
+    y_gabri = x
+    # plt.figure()
+    # sns.scatterplot(X_gabri[:, 0], X_gabri[:, 1], hue=y)
+    # plt.show()
+
     datasets = {
-        "noisy_circles": noisy_circles,
-        "noisy_moons": noisy_moons,
+        # "gabri": (X_gabri, y_gabri),
+        # "noisy_circles": noisy_circles,
+        # "noisy_moons": noisy_moons,
         "blobs": blobs,
-        # "no_structure": no_structure,
-        "aniso": aniso,
-        "varied": varied,
+        # "aniso": aniso,
+        # "varied": varied,
     }
+    # for dataset, data in datasets.items():
+    #     d = pd.DataFrame(data)
+    #     d.to_csv(f"{dataset}.csv")
+    # return
 
     bar_position = 0
     progress_bar = tqdm(datasets.items(), position=bar_position)
@@ -47,14 +61,16 @@ def main():
         X, y = data
         X = StandardScaler().fit_transform(X)
 
-        N = 20
+        N = 40
         model = Gexin(verbose=False)
-        model.fit(X, N=N, num_epochs=400, lr=0.01)
+        model.fit(X, N=N, num_epochs=400, lr=0.0008)
         model.compute_sample_graph()
         model.compute_graph()
         # model.plot_adjacency_matrix()
-        model.plot_graph(y, os.path.join(results_dir, f"{dataset}.png"))
-        model.plot_sample_graph(y, os.path.join(results_dir, f"{dataset}_samples.png"))
+        model.plot_graph(y, os.path.join(results_dir, f"{dataset}.pdf"))
+        model.plot_sample_graph(y, os.path.join(results_dir, f"{dataset}_samples.pdf"))
+        # model.plot_graph(y, os.path.join(results_dir, f"{dataset}.png"))
+        # model.plot_sample_graph(y, os.path.join(results_dir, f"{dataset}_samples.png"))
         # pd.DataFrame(model.adjacency_matrix_).to_csv(os.path.join(results_dir, f"{dataset}.csv"))
         # pd.DataFrame(model.centroids_).to_csv(os.path.join(results_dir, f"{dataset}_centroids.csv"))
         # pd.DataFrame(model.adjacency_samples_).to_csv(os.path.join(results_dir, f"{dataset}_samples.csv"))

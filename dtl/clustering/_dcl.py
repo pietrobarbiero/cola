@@ -13,7 +13,7 @@ from sklearn.preprocessing import MinMaxScaler
 from tqdm import tqdm
 
 
-class Gexin():
+class DeepCompetitiveLayer():
     def __init__(self, kmodel=None, optimizer=None, verbose=True):
         self.kmodel = kmodel
         self.optimizer = optimizer
@@ -21,7 +21,7 @@ class Gexin():
 
     def fit(self, X, N, num_epochs=200, lr=0.001):
         self.N_ = N
-        self.input_matrix_ = tf.convert_to_tensor(X.T, np.float32)
+        self.input_matrix_ = tf.convert_to_tensor(X, np.float32)
         self.adjacency_matrix_ = np.zeros((self.N_, self.N_))
 
         if self.optimizer is None:
@@ -30,16 +30,12 @@ class Gexin():
             self.optimizer_ = self.optimizer
 
         if self.kmodel is None:
-            y_idx = np.random.choice(range(X.shape[0]), size=N, replace=False)
-            y = X[y_idx]
-            input = tf.keras.layers.Input(shape=(X.shape[0],))
-            x = tf.keras.layers.BatchNormalization()(input)
-            x = tf.keras.layers.Dense(10, activation='relu')(x)
-            x = tf.keras.layers.Dense(10, activation='relu')(x)
-            output = tf.keras.layers.Dense(N)(x)
+            # y_idx = np.random.choice(range(X.shape[1]), size=N, replace=False)
+            # y = X[y_idx]
+            input = tf.keras.layers.Input(shape=(X.shape[1],))
+            output = tf.keras.layers.Dense(N, use_bias=False)(input)
             self.kmodel_ = tf.keras.Model(inputs=input, outputs=output)
             self.kmodel_.compile(optimizer=self.optimizer_, loss="mse")
-            self.kmodel_.fit(X.T, y.T, epochs=20, verbose=0)
 
         self.loss_value_ = np.inf
         pbar = tqdm(range(num_epochs+1))
@@ -54,12 +50,14 @@ class Gexin():
 
     def _grad(self):
         with tf.GradientTape() as tape:
-            loss_value, adjacency_matrix_ = self._loss(self.kmodel_(self.input_matrix_))
+            loss_value, adjacency_matrix_ = self._loss()
         return loss_value, tape.gradient(loss_value, self.kmodel_.trainable_variables), adjacency_matrix_
 
-    def _loss(self, output):
+    def _loss(self):
+        output = self.kmodel_.weights[0]
+
         adjacency_matrix = np.zeros((self.N_, self.N_))
-        A = tf.transpose(self.input_matrix_)
+        A = self.input_matrix_
         D = _squared_dist(A, tf.transpose(output))
         d_min = tf.math.reduce_min(D, axis=1)
 
@@ -92,9 +90,9 @@ class Gexin():
         return cost, adjacency_matrix
 
     def compute_graph(self):
-        self.centroids_ = self.kmodel_.predict(self.input_matrix_)
+        self.centroids_ = self.kmodel_.weights[0]
         has_samples = []
-        input_matrix = tf.transpose(self.input_matrix_)
+        input_matrix = self.input_matrix_
         D = _squared_dist(input_matrix, tf.transpose(self.centroids_))
         s = tf.argsort(D.numpy(), axis=1)[:, :2].numpy()
         for i in range(self.N_):
@@ -177,9 +175,11 @@ class Gexin():
 
         pos = nx.drawing.layout.spring_layout(self.G_samples_, seed=42)
         plt.figure(figsize=figsize)
+        fig, ax = plt.subplots()
         c = '#00838F'
         nx.draw_networkx_nodes(self.G_samples_, pos=pos, node_size=10, node_color=node_colors_list)
         nx.draw_networkx_edges(self.G_samples_, pos=pos, width=widths, edge_color=c)
+        ax.axis('off')
         plt.tight_layout()
         if file_name is not None:
             plt.savefig(file_name)
@@ -189,7 +189,7 @@ class Gexin():
         gc.collect()
 
     def plot_graph(self, y, file_name=None, figsize=[5, 4]):
-        X = self.input_matrix_.numpy().T
+        X = self.input_matrix_.numpy()
         if X.shape[1] > 2:
             tsne = TSNE(n_components=2, random_state=42)
             M_list = [X]
@@ -218,6 +218,7 @@ class Gexin():
         widths = MinMaxScaler(feature_range=(0, 5)).fit_transform(wd.reshape(-1, 1)).squeeze().tolist()
 
         plt.figure(figsize=figsize)
+        fig, ax = plt.subplots()
         if y is not None:
             cmap = sns.color_palette(sns.color_palette("hls", len(set(y))))
             sns.scatterplot(Xp[:, 0], Xp[:, 1], hue=y, palette=cmap, hue_order=set(y), alpha=0.8)
@@ -227,6 +228,8 @@ class Gexin():
         nx.draw_networkx_nodes(self.G_, pos=pos, node_size=600, node_color=c)
         nx.draw_networkx(self.G_, pos=pos, node_size=0, width=0, font_color='white', font_weight="bold")
         nx.draw_networkx_edges(self.G_, pos=pos, width=widths, edge_color=c)
+        ax.axis('off')
+        plt.tight_layout()
         if file_name is not None:
             plt.savefig(file_name)
         plt.show()

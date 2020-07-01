@@ -75,9 +75,9 @@ class Fexin():
     def _loss(self, output_list, epoch, beta_o):
         N = self.E_.shape[0]
         cost = tf.Variable(0, dtype=np.float32)
-        Et_list = []
+        Et = np.zeros((N, N))
         for q, (A, output) in enumerate(zip(self.A_list_, output_list)):
-            Et = np.zeros((N, N))
+            # Et = np.zeros((N, N))
             A = tf.transpose(A)
             D = _squared_dist(A, tf.transpose(output))
             d_min = tf.math.reduce_min(D, axis=1)
@@ -100,7 +100,7 @@ class Fexin():
                         Et[i, j] += k
                         Et[j, i] += k
 
-            Et_list.append(Et)
+            # Et_list.append(Et)
             E = tf.convert_to_tensor(Et, np.float32)
 
             Fn = tf.reduce_max(min_inside)
@@ -109,7 +109,7 @@ class Fexin():
             Eq2 = tf.norm(d_max)
             El = tf.norm(E, 1)
             cost = tf.add(Fn / Fd + Eq + Eq2 + El, cost)
-        return cost, Et_list
+        return cost, Et
 
     def plot(self, X_list, y=None, title="", file_path="fexin.png"):
         Wa_list = self.predict(self.A_list_)
@@ -118,7 +118,8 @@ class Fexin():
         n = X_list[0].shape[0]
         A_samples = np.zeros((n, n))
 
-        for k, (A, X, Wa, Ei) in enumerate(zip(self.A_list_, X_list, Wa_list, self.Ei_list_)):
+        for k, (A, X, Wa) in enumerate(zip(self.A_list_, X_list, Wa_list)):
+            Ei = self.Ei_list_
             node_colors = {}
             for i in range(N):
                 node_colors[i] = []
