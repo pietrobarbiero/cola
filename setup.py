@@ -24,15 +24,15 @@ ver_file = os.path.join('dtl', '_version.py')
 with open(ver_file) as f:
     exec(f.read())
 
-DISTNAME = 'fexin'
-DESCRIPTION = 'FEXIN.'
+DISTNAME = 'dtl'
+DESCRIPTION = 'Deep Topological Learning: a deep learning library for complex topological tasks.'
 with codecs.open('README.rst', encoding='utf-8-sig') as f:
     LONG_DESCRIPTION = f.read()
 MAINTAINER = 'P. Barbiero'
 MAINTAINER_EMAIL = 'barbiero@tutanota.com'
-URL = 'https://github.com/pietrobarbiero/fexin'
+URL = 'https://github.com/pietrobarbiero/deep-topological-learning'
 LICENSE = 'Apache 2.0'
-DOWNLOAD_URL = 'https://github.com/pietrobarbiero/fexin.git'
+DOWNLOAD_URL = 'https://github.com/pietrobarbiero/deep-topological-learning.git'
 VERSION = __version__
 INSTALL_REQUIRES = ['numpy', 'scikit-learn', 'tensorflow', 'tqdm']
 CLASSIFIERS = ['Intended Audience :: Science/Research',

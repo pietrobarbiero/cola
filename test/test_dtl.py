@@ -1,7 +1,7 @@
 import os
 import unittest
 
-from sklearn.datasets import load_iris
+from sklearn.datasets import load_iris, make_blobs
 from sklearn.preprocessing import StandardScaler
 
 
@@ -11,13 +11,10 @@ class TestDTL(unittest.TestCase):
 
         from dtl import DeepTopologicalClustering
 
-        X, y = load_iris(return_X_y=True)
+        X, y = make_blobs(n_samples=200, random_state=42)
 
-        X = StandardScaler().fit_transform(X)
-
-        N = 40
         model = DeepTopologicalClustering()
-        model.fit(X, N=N, num_epochs=400, lr=0.0008)
+        model.fit(X, N=30, num_epochs=200, lr=0.01)
         model.compute_sample_graph()
         model.compute_graph()
 
