@@ -14,7 +14,7 @@ from tqdm import tqdm
 import pandas as pd
 import numpy as np
 
-from dtl import Fexin, Gexin
+from deeptl import Fexin, Gexin
 
 datasets = [
     # "iris",

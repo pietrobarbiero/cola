@@ -20,11 +20,11 @@ import os
 from setuptools import find_packages, setup
 
 # get __version__ from _version.py
-ver_file = os.path.join('dtl', '_version.py')
+ver_file = os.path.join('deeptl', '_version.py')
 with open(ver_file) as f:
     exec(f.read())
 
-DISTNAME = 'dtl'
+DISTNAME = 'deeptl'
 DESCRIPTION = 'Deep Topological Learning: a deep learning library for complex topological tasks.'
 with codecs.open('README.rst', encoding='utf-8-sig') as f:
     LONG_DESCRIPTION = f.read()

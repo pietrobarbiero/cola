@@ -16,7 +16,7 @@ Using DTL
 
 .. code:: python
 
-    from dtl import DeepTopologicalClustering
+    from deeptl import DeepTopologicalClustering
 
     X, y = load_iris(return_X_y=True)
 

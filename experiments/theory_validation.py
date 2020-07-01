@@ -10,7 +10,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-from dtl import DeepCompetitiveLayer
+from deeptl import DeepCompetitiveLayer
 
 
 def main():

@@ -9,7 +9,7 @@ class TestDTL(unittest.TestCase):
 
     def test_class(self):
 
-        from dtl import DeepTopologicalClustering
+        from deeptl import DeepTopologicalClustering
 
         X, y = make_blobs(n_samples=200, random_state=42)
 

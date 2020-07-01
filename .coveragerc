@@ -1,6 +1,6 @@
 [run]
 branch = True
-include = dtl/*
+include = deeptl/*
 
 [report]
 exclude_lines =
