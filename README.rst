@@ -35,7 +35,7 @@ Using DeepTL
 
 
 
-.. image:: example.png
+.. image:: Circles_dual.png
     :width: 200px
     :align: center
     :height: 200px
