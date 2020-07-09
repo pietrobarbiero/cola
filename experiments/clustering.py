@@ -62,8 +62,8 @@ def main():
         X = StandardScaler().fit_transform(X)
 
         N = 40
-        model = DeepTopologicalClustering(verbose=False)
-        model.fit(X, N=N, num_epochs=400, lr=0.0008)
+        model = DeepTopologicalClustering(verbose=False, N=N, num_epochs=400, lr=0.0008)
+        model.fit(X)
         model.compute_sample_graph()
         model.compute_graph()
         model.plot_adjacency_matrix()

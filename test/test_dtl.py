@@ -13,8 +13,8 @@ class TestDTL(unittest.TestCase):
 
         X, y = make_blobs(n_samples=200, random_state=42)
 
-        model = DeepTopologicalClustering()
-        model.fit(X, N=30, num_epochs=200, lr=0.01)
+        model = DeepTopologicalClustering(N=30, num_epochs=200, lr=0.01)
+        model.fit(X)
         model.compute_sample_graph()
         model.compute_graph()
 

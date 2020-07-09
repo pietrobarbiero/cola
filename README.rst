@@ -1,18 +1,18 @@
-Deep Topological Learning (DTL)
+Deep Topological Learning (DeepTL)
 ======================================================
 
-DTL is a Python package providing an easy-to-use software
+DeepTL is a Python package providing an easy-to-use software
 for learning complex topologies with neural networks.
 
-DTL networks are based on a novel theory (`the duality theory`)
+DeepTL networks are based on a novel theory (`the duality theory`)
 bridging
 two research fields which are usually thought as disjointed:
-supervised deep learning and unsupervised competitive
+gradient-based and competitive
 neighborhood-based learning.
 
 
-Using DTL
------------
+Using DeepTL
+---------------
 
 .. code:: python
 
@@ -22,7 +22,7 @@ Using DTL
 
     # load and fit the neural model
     model = DeepTopologicalClustering()
-    model.fit(X, N=40, num_epochs=400, lr=0.0008)
+    model.fit(X)
 
     # compute the final graphs
     model.compute_sample_graph()
