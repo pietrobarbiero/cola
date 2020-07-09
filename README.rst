@@ -13,17 +13,16 @@ neighborhood-based learning.
 
 Examples on benchmark datasets
 --------------------------------
+.. list-table::
 
-|spiral| |moons| |circles|
+    * - .. figure:: https://github.com/pietrobarbiero/deep-topological-learning/blob/master/Spiral_dual.png
+            :height: 100px
 
-.. |spiral| image:: https://github.com/pietrobarbiero/deep-topological-learning/blob/master/Spiral_dual.png
-    :width: 30 %
+      - .. image:: https://github.com/pietrobarbiero/deep-topological-learning/blob/master/Circles_dual.png
+            :height: 100px
 
-.. |moons| image:: https://github.com/pietrobarbiero/deep-topological-learning/blob/master/Circles_dual.png
-    :width: 30 %
-
-.. |circles| image:: https://github.com/pietrobarbiero/deep-topological-learning/blob/master/Moons_dual.png
-    :width: 30 %
+      - .. image:: https://github.com/pietrobarbiero/deep-topological-learning/blob/master/Moons_dual.png
+            :height: 100px
 
 
 
