@@ -39,11 +39,8 @@ Using DeepTL
     model = DeepTopologicalClustering()
     model.fit(X)
 
-    # compute the final graphs
-    model.compute_sample_graph()
+    # compute the final graph and plot the result
     model.compute_graph()
-
-    # plot the results
     model.plot_graph(y)
 
 
