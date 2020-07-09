@@ -11,6 +11,18 @@ gradient-based and competitive
 neighborhood-based learning.
 
 
+Examples on benchmark datasets
+--------------------------------
+
+.. image:: https://github.com/pietrobarbiero/deep-topological-learning/blob/master/Spiral_dual.png
+    :width: 30 %
+.. image:: https://github.com/pietrobarbiero/deep-topological-learning/blob/master/Circles_dual.png
+    :width: 30 %
+.. image:: https://github.com/pietrobarbiero/deep-topological-learning/blob/master/Moons_dual.png
+    :width: 30 %
+
+
+
 Using DeepTL
 ---------------
 
@@ -18,7 +30,7 @@ Using DeepTL
 
     from deeptl import DeepTopologicalClustering
 
-    X, y = load_iris(return_X_y=True)
+    X, y = ... # load dataset
 
     # load and fit the neural model
     model = DeepTopologicalClustering()
@@ -29,17 +41,7 @@ Using DeepTL
     model.compute_graph()
 
     # plot the results
-    model.plot_adjacency_matrix()
     model.plot_graph(y)
-    model.plot_sample_graph(y)
-
-
-
-.. image:: Circles_dual.png
-    :width: 200px
-    :align: center
-    :height: 200px
-    :alt: result
 
 
 Authors
