@@ -23,6 +23,39 @@ class DeepTopologicalClustering():
         self.num_epochs = num_epochs
         self.lr = lr
 
+    def _compute_confusion_matrix(self, y):
+        input_matrix = tf.transpose(self.input_matrix_)
+        D = _squared_dist(input_matrix, tf.transpose(self.centroids_))
+        s = tf.argmin(D.numpy(), axis=1).numpy()
+        sz = len(set(y))
+        confusion_matrix = np.zeros((sz, sz))
+        for i in range(self.N):
+            idx = s == i
+            if sum(idx) > 0:
+                counts = collections.Counter(y[idx])
+                km, vm = counts.most_common(1)[0]
+                for k, v in counts.items():
+                    confusion_matrix[km, k] += v
+        return confusion_matrix
+
+    def plot_confusion_matrix(self, y, title='', file_name=None, figsize=[5, 5]):
+        confmat = self._compute_confusion_matrix(y)
+        plt.figure(figsize=figsize)
+        sns.heatmap(confmat.astype('int'), annot=True, fmt='d',
+                    cbar=False, square=True, cmap='Greens')
+        plt.title(title)
+        plt.ylabel('true')
+        plt.xlabel('predicted')
+        plt.tight_layout()
+        plt.savefig(file_name)
+        plt.show()
+        return
+
+    def score(self, y):
+        confusion_matrix = self._compute_confusion_matrix(y)
+        accuracy = sum(np.diag(confusion_matrix)) / np.sum(confusion_matrix)
+        return accuracy
+
     def fit(self, X):
         # X_rand = np.random.normal(np.mean(X, axis=1), np.var(X, axis=1), X.T.shape).T
         # self.random_matrix_ = tf.convert_to_tensor(X_rand.T, np.float32)
@@ -38,10 +71,10 @@ class DeepTopologicalClustering():
             y_idx = np.random.choice(range(X.shape[0]), size=self.N, replace=False)
             y = X[y_idx]
             input = tf.keras.layers.Input(shape=(X.shape[0],))
-            x = tf.keras.layers.BatchNormalization()(input)
-            # x = tf.keras.layers.Dense(10, activation='relu')(x)
-            # x = tf.keras.layers.Dense(10, activation='relu')(x)
-            output = tf.keras.layers.Dense(self.N)(x)
+            # x = tf.keras.layers.BatchNormalization()(input)
+            # x = tf.keras.layers.Dense(self.N, activation='relu')(input)
+            # x = tf.keras.layers.Dense(self.N, activation='relu')(x)
+            output = tf.keras.layers.Dense(self.N)(input)
             self.kmodel_ = tf.keras.Model(inputs=input, outputs=output)
             self.kmodel_.compile(optimizer=self.optimizer_, loss="mse")
             # self.kmodel_.fit(X.T, y.T, epochs=20, verbose=0)
@@ -78,6 +111,16 @@ class DeepTopologicalClustering():
         A = tf.transpose(self.input_matrix_)
         D = _squared_dist(A, tf.transpose(output))
         d_min = tf.math.reduce_min(D, axis=1)
+
+        # # TODO: is it faster?
+        # W = self.kmodel_.weights[4].numpy()
+        # b = self.kmodel_.weights[5].numpy()
+        # # W2 = W - np.linalg.norm(b, 2)**2 / 2
+        # # W2 = W.T - np.linalg.norm(W, 1, axis=1)**2 / 2
+        # W2 = W - np.linalg.norm(output, 2, axis=0)**2 / 2
+        # winners = np.argmax(W2, axis=1)
+        # winners2 = np.argmax(D.numpy(), axis=1)
+        # print(np.all(winners==winners2))
 
         s = tf.argsort(D.numpy(), axis=1)[:, :2].numpy()
         # min_inside = tf.Variable(tf.zeros((self.N,), dtype=np.float32))

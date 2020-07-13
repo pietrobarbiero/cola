@@ -1,8 +1,10 @@
+import gc
 import sys
 import os
 
 from sklearn import clone, datasets
-from sklearn.datasets import make_circles, make_moons, make_blobs, make_classification
+from sklearn.cluster import k_means, KMeans
+from sklearn.datasets import make_circles, make_moons, make_blobs, make_classification, load_digits
 from sklearn.preprocessing import StandardScaler
 from tqdm import tqdm
 import pandas as pd
@@ -11,8 +13,19 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import time
 import logging
+import tensorflow as tf
 
 from deeptl import DeepCompetitiveLayer, DeepTopologicalClustering
+
+
+def _squared_dist(A, B):
+    row_norms_A = tf.reduce_sum(tf.square(A), axis=1)
+    row_norms_A = tf.reshape(row_norms_A, [-1, 1])  # Column vector.
+
+    row_norms_B = tf.reduce_sum(tf.square(B), axis=1)
+    row_norms_B = tf.reshape(row_norms_B, [1, -1])  # Row vector.
+
+    return row_norms_A - 2 * tf.matmul(A, tf.transpose(B)) + row_norms_B
 
 
 def main():
@@ -61,16 +74,19 @@ def main():
                                  n_informative=10, n_redundant=2990, hypercube=False,
                                  n_classes=4, n_clusters_per_class=1, random_state=42)
 
+    x_digits, y_digits = load_digits(return_X_y=True)
+
     datasets = {
+        "digits": (x_digits, y_digits),
         "Spiral": (X_spiral, y_spiral),
         "Circles": noisy_circles,
         "Moons": noisy_moons,
-        # "Blobs (low)": (Xl, yl),
-        # "Blobs (high)": (Xh, yh),
-        # "gabri": (X_gabri, y_gabri),
-        # "Ellipsoids": aniso,
-        # "Blobs": blobs,
-        # "varied": varied,
+        "Blobs (low)": (Xl, yl),
+        "Blobs (high)": (Xh, yh),
+        "gabri": (X_gabri, y_gabri),
+        "Ellipsoids": aniso,
+        "Blobs": blobs,
+        "varied": varied,
     }
 
     bar_position = 0
@@ -81,13 +97,14 @@ def main():
         X = StandardScaler().fit_transform(X)
 
         N = 30
-        num_epochs = 400
+        num_epochs = 1000
         lr_dual = 0.0008
         lr_standard = 0.008
         lmb_dual = 0.01
         lmb_standard = 0.01
-        repetitions = 5
+        repetitions = 1
 
+        kmeans_losses = []
         mlp_losses = []
         mlp_loss_Q = []
         mlp_loss_E = []
@@ -115,6 +132,29 @@ def main():
             mlp_loss_Q.extend(model_mlp.loss_Q_)
             mlp_loss_E.extend(model_mlp.loss_E_)
             mlp_nodes.extend(model_mlp.node_list_)
+
+            for iter in range(num_epochs+1):
+                # model_km = KMeans(n_clusters=model_trans.node_list_[-1], max_iter=num_epochs).fit(X)
+                model_km = KMeans(n_clusters=N, n_init=5, max_iter=num_epochs, random_state=42).fit(X)
+                D = _squared_dist(tf.Variable(X), tf.Variable(model_km.cluster_centers_))
+                d_min = tf.math.reduce_min(D, axis=1)
+                loss = tf.norm(d_min).numpy()
+                kmeans_losses.append(loss)
+                print(f'K-means: iteration {iter}/{num_epochs} | loss: {loss:.4f}')
+            # plt.figure(figsize=[5, 4])
+            # fig, ax = plt.subplots()
+            # cmap = sns.color_palette(sns.color_palette("hls", len(set(y))))
+            # sns.scatterplot(X[:, 0], X[:, 1], hue=y, palette=cmap, hue_order=set(y), alpha=0.3, legend=False)
+            # c = '#00838F'
+            # plt.scatter(model_km.cluster_centers_[:, 0], model_km.cluster_centers_[:, 1], c=c, s=200)
+            # ax.axis('off')
+            # plt.tight_layout()
+            # plt.savefig(os.path.join(results_dir, f"{dataset}_{i}_kmeans.pdf"))
+            # plt.savefig(os.path.join(results_dir, f"{dataset}_{i}_kmeans.png"))
+            # plt.show()
+            # plt.clf()
+            # plt.close()
+            # gc.collect()
 
             model_trans = DeepTopologicalClustering(verbose=False, lmb=lmb_dual,
                                                     N=N, num_epochs=num_epochs, lr=lr_dual)
@@ -160,12 +200,14 @@ def main():
             'epoch': steps,
             'standard': mlp_loss_Q,
             'dual': trans_loss_Q,
+            'kmeans': kmeans_losses,
         })
 
         sns.set_style('whitegrid')
         plt.figure(figsize=[4, 3])
-        sns.lineplot('epoch', 'standard', data=losses_Q, label='standard', ci=99)
+        # sns.lineplot('epoch', 'standard', data=losses_Q, label='standard', ci=99)
         sns.lineplot('epoch', 'dual', data=losses_Q, label='dual', ci=99)
+        sns.lineplot('epoch', 'kmeans', data=losses_Q, label='kmeans', ci=99)
         # plt.yscale('log')
         plt.ylabel('quantization error')
         plt.title(f'{dataset}')
