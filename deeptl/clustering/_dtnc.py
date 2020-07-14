@@ -13,7 +13,7 @@ from sklearn.preprocessing import MinMaxScaler
 from tqdm import tqdm
 
 
-class DeepCompetitiveLayer():
+class DeepTopologicalNonstationaryClustering():
     def __init__(self, kmodel=None, optimizer=None, verbose=True, lmb=0.01, N=30, num_epochs=200, lr=0.001):
         self.kmodel = kmodel
         self.optimizer = optimizer
@@ -23,9 +23,44 @@ class DeepCompetitiveLayer():
         self.num_epochs = num_epochs
         self.lr = lr
 
-    def fit(self, X):
-        self.input_matrix_ = tf.convert_to_tensor(X, np.float32)
-        self.adjacency_matrix_ = np.zeros((self.N, self.N))
+    def _compute_confusion_matrix(self, y):
+        input_matrix = tf.transpose(self.input_matrix_)
+        D = _squared_dist(input_matrix, tf.transpose(self.centroids_))
+        s = tf.argmin(D.numpy(), axis=1).numpy()
+        sz = len(set(y))
+        confusion_matrix = np.zeros((sz, sz))
+        for i in range(self.N):
+            idx = s == i
+            if sum(idx) > 0:
+                counts = collections.Counter(y[idx])
+                km, vm = counts.most_common(1)[0]
+                for k, v in counts.items():
+                    confusion_matrix[km, k] += v
+        return confusion_matrix
+
+    def plot_confusion_matrix(self, y, title='', file_name=None, figsize=[5, 5]):
+        confmat = self._compute_confusion_matrix(y)
+        plt.figure(figsize=figsize)
+        sns.heatmap(confmat.astype('int'), annot=True, fmt='d',
+                    cbar=False, square=True, cmap='Greens')
+        plt.title(title)
+        plt.ylabel('true')
+        plt.xlabel('predicted')
+        plt.tight_layout()
+        plt.savefig(file_name)
+        plt.show()
+        return
+
+    def score(self, y):
+        confusion_matrix = self._compute_confusion_matrix(y)
+        accuracy = sum(np.diag(confusion_matrix)) / np.sum(confusion_matrix)
+        return accuracy
+
+    def fit(self, X, y):
+        self.time_steps_ = set(y)
+        self.input_matrices_ = []
+        self.adjacency_matrices_ = []
+        self.centroid_list_ = []
 
         if self.optimizer is None:
             self.optimizer_ = tf.keras.optimizers.Adam(learning_rate=self.lr)
@@ -33,42 +68,63 @@ class DeepCompetitiveLayer():
             self.optimizer_ = self.optimizer
 
         if self.kmodel is None:
-            input = tf.keras.layers.Input(shape=(X.shape[1],))
-            output = tf.keras.layers.Dense(self.N, use_bias=False)(input)
+            Xi = X[y == 0]
+            input = tf.keras.layers.Input(shape=(Xi.shape[0],))
+            output = tf.keras.layers.Dense(self.N)(input)
             self.kmodel_ = tf.keras.Model(inputs=input, outputs=output)
+            self.kmodel_.compile(optimizer=self.optimizer_, loss="mse")
 
-        self.loss_value_ = np.inf
+        pbar0 = tqdm(self.time_steps_)
         self.loss_vals = []
         self.loss_Q_ = []
         self.loss_E_ = []
         self.node_list_ = []
-        pbar = tqdm(range(self.num_epochs))
-        for epoch in pbar:
-            loss_value, grads, adjacency_matrix = self._grad()
-            self.loss_vals.append(loss_value.numpy())
-            self.optimizer_.apply_gradients(zip(grads, self.kmodel_.trainable_variables))
-            if loss_value < self.loss_value_:
-                self.adjacency_matrix_ = adjacency_matrix
-                self.loss_value_ = loss_value
-                self.centroids_ = self.output_
-            self.compute_graph()
-            self.node_list_.append(len(self.G_.nodes))
-            pbar.set_description(f"Epoch: {epoch} - Loss: {loss_value:.2f}")
+        for yi in pbar0:
+            Xi = X[y==yi]
+            self.input_matrix_ = tf.convert_to_tensor(Xi.T, np.float32)
+            self.adjacency_matrix_ = np.zeros((self.N, self.N))
+
+            self.loss_value_ = np.inf
+            pbar = tqdm(range(self.num_epochs))
+            for epoch in pbar:
+                loss_value, grads, adjacency_matrix = self._grad()
+                self.loss_vals.append(loss_value.numpy())
+                self.optimizer_.apply_gradients(zip(grads, self.kmodel_.trainable_variables))
+                if loss_value < self.loss_value_:
+                    self.adjacency_matrix_ = adjacency_matrix
+                    self.loss_value_ = loss_value
+                    self.centroids_ = self.output_
+                pbar.set_description(f"Set: {yi} | Epoch: {epoch} | Loss: {loss_value:.2f}")
+
+            self.centroid_list_.append(self.centroids_)
+            self.adjacency_matrices_.append(self.adjacency_matrix_)
+            self.input_matrices_.append(self.input_matrix_)
+
         return self
 
     def _grad(self):
         with tf.GradientTape() as tape:
-            loss_value, adjacency_matrix_ = self._loss()
+            loss_value, adjacency_matrix_ = self._loss(self.kmodel_(self.input_matrix_))
+            # loss_value, adjacency_matrix_ = self._loss(self.kmodel_(self.random_matrix_))
         return loss_value, tape.gradient(loss_value, self.kmodel_.trainable_variables), adjacency_matrix_
 
-    def _loss(self):
-        output = self.kmodel_.weights[0]
+    def _loss(self, output):
         self.output_ = output
 
         adjacency_matrix = np.zeros((self.N, self.N))
-        A = self.input_matrix_
+        A = tf.transpose(self.input_matrix_)
         D = _squared_dist(A, tf.transpose(output))
         d_min = tf.math.reduce_min(D, axis=1)
+
+        # # TODO: is it faster?
+        # W = self.kmodel_.weights[4].numpy()
+        # b = self.kmodel_.weights[5].numpy()
+        # # W2 = W - np.linalg.norm(b, 2)**2 / 2
+        # # W2 = W.T - np.linalg.norm(W, 1, axis=1)**2 / 2
+        # W2 = W - np.linalg.norm(output, 2, axis=0)**2 / 2
+        # winners = np.argmax(W2, axis=1)
+        # winners2 = np.argmax(D.numpy(), axis=1)
+        # print(np.all(winners==winners2))
 
         s = tf.argsort(D.numpy(), axis=1)[:, :2].numpy()
         # min_inside = tf.Variable(tf.zeros((self.N,), dtype=np.float32))
@@ -85,8 +141,8 @@ class DeepCompetitiveLayer():
                 # max_outside[i].assign(tf.reduce_min(_squared_dist(a, b)))
                 for j in set(si[:, 1]):
                     k = sum(si[:, 1] == j)
-                    adjacency_matrix[i, j] = 1
-                    adjacency_matrix[j, i] = 1
+                    adjacency_matrix[i, j] += 1
+                    adjacency_matrix[j, i] += 1
 
         E = tf.convert_to_tensor(adjacency_matrix, np.float32)
 
@@ -104,26 +160,51 @@ class DeepCompetitiveLayer():
         return cost, adjacency_matrix
 
     def compute_graph(self):
-        has_samples = []
-        input_matrix = self.input_matrix_
-        D = _squared_dist(input_matrix, tf.transpose(self.centroids_))
-        s = tf.argsort(D.numpy(), axis=1)[:, :2].numpy()
-        for i in range(self.N):
-            idx = s[:, 0] == i
-            if sum(idx) > 0:
-                has_samples.append(True)
-            else:
-                has_samples.append(False)
-
         self.G_ = nx.Graph()
-        we = []
-        for i in range(0, self.adjacency_matrix_.shape[0]):
-            for j in range(i + 1, self.adjacency_matrix_.shape[1]):
-                if self.adjacency_matrix_[i, j] > 0 and has_samples[i] and has_samples[j]:
-                    we.append((i, j, self.adjacency_matrix_[i, j]))
-        self.G_.add_weighted_edges_from(we)
+        self.B_ = nx.Graph()
+        self.pos_ = {}
+        self.pos_B_ = {}
+        offset_rows, last_offset_rows, offset_cols = 0, 0, 0
+        for yi in self.time_steps_:
+            has_samples = []
+            input_matrix = tf.transpose(self.input_matrices_[yi])
+            D = _squared_dist(input_matrix, tf.transpose(self.centroid_list_[yi]))
+            s = tf.argsort(D.numpy(), axis=1)[:, :2].numpy()
+            for i in range(self.N):
+                idx = s[:, 0] == i
+                if sum(idx) > 0:
+                    has_samples.append(True)
+                else:
+                    has_samples.append(False)
+
+            adjacency_matrix = self.adjacency_matrices_[yi]
+            we = []
+            for i in range(0, adjacency_matrix.shape[0]):
+                for j in range(i + 1, adjacency_matrix.shape[1]):
+                    if adjacency_matrix[i, j] > 0 and has_samples[i] and has_samples[j]:
+                        we.append((offset_rows + i, offset_cols + j, adjacency_matrix[i, j]))
+                        self.pos_[offset_rows + i] = self.centroid_list_[yi][:, i].numpy()
+                        self.pos_[offset_cols + j] = self.centroid_list_[yi][:, j].numpy()
+            self.G_.add_weighted_edges_from(we)
+
+            if yi > 0:
+                wb = []
+                for i, vi in enumerate(has_samples):
+                    for j, vj in enumerate(last_has_samples):
+                        if vi and vj:
+                            # print(f'{offset_rows + i} - {j}')
+                            wb.append((offset_rows + i, last_offset_rows + j, 1))
+                self.B_.add_weighted_edges_from(wb)
+
+            last_offset_rows = offset_rows
+            offset_rows += adjacency_matrix.shape[0]
+            offset_cols += adjacency_matrix.shape[1]
+            # last_adjacency_matrix = adjacency_matrix
+            last_has_samples = has_samples
+        return
 
     def compute_sample_graph(self):
+        self.centroids_ = self.kmodel_.predict(self.input_matrix_)
         n = self.input_matrix_.shape[1]
         self.adjacency_samples_ = np.zeros((n, n))
         has_samples = []
@@ -200,12 +281,11 @@ class DeepCompetitiveLayer():
         plt.close()
         gc.collect()
 
-    def plot_graph(self, y, file_name=None, figsize=[5, 4]):
+    def plot_graph(self, X, y, file_name=None, figsize=[5, 4]):
 
         if len(self.G_.nodes) == 0:
             return
 
-        X = self.input_matrix_.numpy()
         if X.shape[1] > 2:
             tsne = TSNE(n_components=2, random_state=42)
             M_list = [X]
@@ -224,12 +304,9 @@ class DeepCompetitiveLayer():
                 pos[nodes_number[i]] = Wp[nodes_idx[i]].reshape(1, -1)[0]
         else:
             Xp = X
-            pos = {}
-            for i in self.G_.nodes:
-                pos[i] = self.centroids_[:, i]
         # w = []
         # for e in self.G_.edges:
-        #     w.append(self.adjacency_matrix_[e[0], e[1]])
+        #     w.append(self.G_[e[0], e[1]])
         # wd = np.array(w)
         # widths = MinMaxScaler(feature_range=(0, 5)).fit_transform(wd.reshape(-1, 1)).squeeze().tolist()
 
@@ -241,11 +318,11 @@ class DeepCompetitiveLayer():
         else:
             sns.scatterplot(Xp[:, 0], Xp[:, 1])
         c = '#00838F'
-        nx.draw_networkx_nodes(self.G_, pos=pos, node_size=200, node_color=c)
+        nx.draw_networkx_nodes(self.G_, pos=self.pos_, node_size=200, node_color=c)
         # nx.draw_networkx(self.G_, pos=pos, node_size=0, width=0, font_color='white', font_weight="bold")
-        nx.draw_networkx(self.G_, pos=pos, node_size=0, width=0, with_labels=False)
-        nx.draw_networkx_edges(self.G_, pos=pos, edge_color=c)
-        # nx.draw_networkx_edges(self.G_, pos=pos, width=widths, edge_color=c)
+        nx.draw_networkx(self.G_, pos=self.pos_, node_size=0, width=0, with_labels=False)
+        nx.draw_networkx_edges(self.G_, pos=self.pos_, edge_color=c)
+        nx.draw_networkx_edges(self.B_, pos=self.pos_, edge_color='orange', alpha=0.3)
         ax.axis('off')
         plt.tight_layout()
         if file_name is not None:

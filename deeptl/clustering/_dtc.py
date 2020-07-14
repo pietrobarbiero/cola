@@ -84,7 +84,7 @@ class DeepTopologicalClustering():
         self.loss_Q_ = []
         self.loss_E_ = []
         self.node_list_ = []
-        pbar = tqdm(range(self.num_epochs+1))
+        pbar = tqdm(range(self.num_epochs))
         for epoch in pbar:
             loss_value, grads, adjacency_matrix = self._grad()
             self.loss_vals.append(loss_value.numpy())
@@ -137,8 +137,8 @@ class DeepTopologicalClustering():
                 # max_outside[i].assign(tf.reduce_min(_squared_dist(a, b)))
                 for j in set(si[:, 1]):
                     k = sum(si[:, 1] == j)
-                    adjacency_matrix[i, j] += k
-                    adjacency_matrix[j, i] += k
+                    adjacency_matrix[i, j] = 1
+                    adjacency_matrix[j, i] = 1
 
         E = tf.convert_to_tensor(adjacency_matrix, np.float32)
 
@@ -280,11 +280,11 @@ class DeepTopologicalClustering():
             pos = {}
             for i in self.G_.nodes:
                 pos[i] = self.centroids_[:, i]
-        w = []
-        for e in self.G_.edges:
-            w.append(self.adjacency_matrix_[e[0], e[1]])
-        wd = np.array(w)
-        widths = MinMaxScaler(feature_range=(0, 5)).fit_transform(wd.reshape(-1, 1)).squeeze().tolist()
+        # w = []
+        # for e in self.G_.edges:
+        #     w.append(self.adjacency_matrix_[e[0], e[1]])
+        # wd = np.array(w)
+        # widths = MinMaxScaler(feature_range=(0, 5)).fit_transform(wd.reshape(-1, 1)).squeeze().tolist()
 
         plt.figure(figsize=figsize)
         fig, ax = plt.subplots()
@@ -297,7 +297,8 @@ class DeepTopologicalClustering():
         nx.draw_networkx_nodes(self.G_, pos=pos, node_size=200, node_color=c)
         # nx.draw_networkx(self.G_, pos=pos, node_size=0, width=0, font_color='white', font_weight="bold")
         nx.draw_networkx(self.G_, pos=pos, node_size=0, width=0, with_labels=False)
-        nx.draw_networkx_edges(self.G_, pos=pos, width=widths, edge_color=c)
+        nx.draw_networkx_edges(self.G_, pos=pos, edge_color=c)
+        # nx.draw_networkx_edges(self.G_, pos=pos, width=widths, edge_color=c)
         ax.axis('off')
         plt.tight_layout()
         if file_name is not None:
