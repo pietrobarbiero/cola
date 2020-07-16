@@ -23,6 +23,39 @@ class DeepCompetitiveLayer():
         self.num_epochs = num_epochs
         self.lr = lr
 
+    def _compute_confusion_matrix(self, y):
+        input_matrix = self.input_matrix_
+        D = _squared_dist(input_matrix, tf.transpose(self.centroids_))
+        s = tf.argmin(D.numpy(), axis=1).numpy()
+        sz = len(set(y))
+        confusion_matrix = np.zeros((sz, sz))
+        for i in range(self.N):
+            idx = s == i
+            if sum(idx) > 0:
+                counts = collections.Counter(y[idx])
+                km, vm = counts.most_common(1)[0]
+                for k, v in counts.items():
+                    confusion_matrix[km, k] += v
+        return confusion_matrix
+
+    def plot_confusion_matrix(self, y, title='', file_name=None, figsize=[5, 5]):
+        confmat = self._compute_confusion_matrix(y)
+        plt.figure(figsize=figsize)
+        sns.heatmap(confmat.astype('int'), annot=True, fmt='d',
+                    cbar=False, square=True, cmap='Greens')
+        plt.title(title)
+        plt.ylabel('true')
+        plt.xlabel('predicted')
+        plt.tight_layout()
+        plt.savefig(file_name)
+        plt.show()
+        return
+
+    def score(self, y):
+        confusion_matrix = self._compute_confusion_matrix(y)
+        accuracy = sum(np.diag(confusion_matrix)) / np.sum(confusion_matrix)
+        return accuracy
+
     def fit(self, X):
         self.input_matrix_ = tf.convert_to_tensor(X, np.float32)
         self.adjacency_matrix_ = np.zeros((self.N, self.N))
@@ -122,6 +155,9 @@ class DeepCompetitiveLayer():
                 if self.adjacency_matrix_[i, j] > 0 and has_samples[i] and has_samples[j]:
                     we.append((i, j, self.adjacency_matrix_[i, j]))
         self.G_.add_weighted_edges_from(we)
+
+        # if len(self.G_.nodes) < 1:
+        #     print()
 
     def compute_sample_graph(self):
         n = self.input_matrix_.shape[1]

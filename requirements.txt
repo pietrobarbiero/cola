@@ -2,3 +2,7 @@ numpy
 scikit-learn
 tensorflow
 tqdm
+matplotlib
+seaborn
+networkx
+keras

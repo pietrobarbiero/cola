@@ -68,8 +68,8 @@ class DeepTopologicalClustering():
             self.optimizer_ = self.optimizer
 
         if self.kmodel is None:
-            y_idx = np.random.choice(range(X.shape[0]), size=self.N, replace=False)
-            y = X[y_idx]
+            # y_idx = np.random.choice(range(X.shape[0]), size=self.N, replace=False)
+            # y = X[y_idx]
             input = tf.keras.layers.Input(shape=(X.shape[0],))
             # x = tf.keras.layers.BatchNormalization()(input)
             # x = tf.keras.layers.Dense(self.N, activation='relu')(input)

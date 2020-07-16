@@ -1,4 +1,3 @@
-from keras.utils import plot_model
 from sklearn.manifold import TSNE
 from sklearn.metrics import euclidean_distances
 from sklearn.preprocessing import MinMaxScaler
@@ -10,6 +9,8 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import gc
 import collections
+from keras.utils import plot_model
+
 
 
 class Fexin():
