@@ -61,7 +61,7 @@ def plot_confusion_matrix(confmat, title='', file_name=None, figsize=[5, 5]):
 
 
 def main():
-    results_dir = "./dimensionality"
+    results_dir = "./dimensionality5"
     if not os.path.exists(results_dir):
         os.makedirs(results_dir)
 
@@ -69,9 +69,9 @@ def main():
                         level=logging.INFO)
 
     experiments = {}
-    n_samples = [100, 1000]
-    n_features = [10, 100, 1000]
-    n_informative = [10, 100, 1000]
+    n_samples = [500]
+    n_features = [100]
+    n_informative = [100]
     for ns in n_samples:
         for nf in n_features:
             for ni in n_informative:
@@ -98,13 +98,22 @@ def main():
                                    n_classes=2, n_clusters_per_class=1, random_state=42)
         X = StandardScaler().fit_transform(X)
 
-        N = 10
-        num_epochs = 300
+        # Xc = np.matmul(X, X.T)
+        # V = np.linalg.eig(Xc)[1]
+        # np.matmul(V.T, X).shape
+
+        # plt.figure()
+        # plt.plot(np.arange(len(E[0])), E[0])
+        # plt.show()
+        # return
+
+        N = 100
+        num_epochs = 400
         lr_dual = 0.008
         lr_base = 0.008
-        lmb_dual = 0.01
-        lmb_base = 0.01
-        repetitions = 5
+        lmb_dual = 0 #0.01
+        lmb_base = 0 #0.01
+        repetitions = 1
 
         kmeans_losses = []
         mlp_losses = []
@@ -128,8 +137,8 @@ def main():
             mlp_time.append(time.time() - start_time)
             accuracy = model_mlp.score(y)
             acc_base.append(accuracy)
-            # title = f'Accuracy: {accuracy:.4f}'
-            # model_mlp.plot_confusion_matrix(y, title, os.path.join(results_dir, f"{dataset}_confmat_base.pdf"))
+            title = f'Accuracy: {accuracy:.4f}'
+            model_mlp.plot_confusion_matrix(y, title, os.path.join(results_dir, f"{dataset}_confmat_base.pdf"))
             # model_mlp.compute_graph()
             # model_mlp.plot_graph(y, os.path.join(results_dir, f"{dataset}_base.png"))
             mlp_losses.extend(model_mlp.loss_vals)
@@ -144,8 +153,8 @@ def main():
             trans_time.append(time.time() - start_time)
             accuracy = model_trans.score(y)
             acc_dual.append(accuracy)
-            # title = f'Accuracy: {accuracy:.4f}'
-            # model_trans.plot_confusion_matrix(y, title, os.path.join(results_dir, f"{dataset}_confmat_dual.pdf"))
+            title = f'Accuracy: {accuracy:.4f}'
+            model_trans.plot_confusion_matrix(y, title, os.path.join(results_dir, f"{dataset}_confmat_dual.pdf"))
             # model_trans.compute_graph()
             # model_trans.plot_graph(y, os.path.join(results_dir, f"{dataset}_dual.png"))
             trans_losses.extend(model_trans.loss_vals)
@@ -154,16 +163,41 @@ def main():
             trans_nodes.extend(model_trans.node_list_)
 
             model_km = KMeans(n_clusters=N).fit(X)
+            D = _squared_dist(tf.Variable(X), tf.Variable(model_km.cluster_centers_))
+            d_min = tf.math.reduce_min(D, axis=1)
+            loss = tf.norm(d_min).numpy()
+            kmeans_losses.extend(len(model_trans.loss_Q_) * [loss])
             confmat = compute_confusion_matrix(model_km, X, y, N)
             score = sum(np.diag(confmat)) / sum(sum(confmat))
             acc_kmeans.append(score)
-            # plot_confusion_matrix(confmat, file_name=os.path.join(results_dir, f"{dataset}_confmat_kmeans.pdf"))
+            plot_confusion_matrix(confmat, file_name=os.path.join(results_dir, f"{dataset}_confmat_kmeans.pdf"))
 
             steps.extend(np.arange(0, len(model_trans.loss_vals)))
             ns_count.append(ns)
             nf_count.append(nf)
             ni_count.append(ni)
             ds_name.append(f'S {ns} - F {nf} - I {ni}')
+
+        losses_Q = pd.DataFrame({
+            'epoch': steps,
+            'base': mlp_loss_Q,
+            'dual': trans_loss_Q,
+            'kmeans': kmeans_losses,
+        })
+
+        sns.set_style('whitegrid')
+        plt.figure(figsize=[4, 3])
+        sns.lineplot('epoch', 'base', data=losses_Q, label='base', ci=99)
+        sns.lineplot('epoch', 'dual', data=losses_Q, label='dual', ci=99)
+        sns.lineplot('epoch', 'kmeans', data=losses_Q, label='kmeans', ci=99)
+        # plt.yscale('log')
+        plt.ylabel('Q')
+        plt.title(f'{dataset}')
+        plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.3), ncol=2)
+        plt.tight_layout()
+        plt.savefig(os.path.join(results_dir, f'{dataset}_loss_q.png'))
+        plt.savefig(os.path.join(results_dir, f'{dataset}_loss_q.pdf'))
+        plt.show()
 
     method = []
     method.extend(['base' for _ in acc_base])
