@@ -1,6 +1,5 @@
 import tensorflow as tf
 from tensorflow.keras import layers, Model, metrics
-import numpy as np
 from tqdm import tqdm
 
 from ._loss import qe_loss
@@ -37,5 +36,5 @@ class DualModel(Model):
             # Compute our own metrics
             loss_tracker.update_state(loss)
 
-            pbar.set_description(f"Epoch: {epoch} - Loss: {loss.numpy():.2f}")
+            pbar.set_description(f"Epoch: {epoch+1} - Loss: {loss.numpy():.2f}")
         return self
