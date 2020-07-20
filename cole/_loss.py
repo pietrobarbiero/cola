@@ -1,10 +1,12 @@
 import tensorflow as tf
 import numpy as np
 
+from cole._utils import squared_dist
+
 
 def qe_loss(input, output):
     # adjacency_matrix = np.zeros((self.N, self.N))
-    D = _squared_dist(input, tf.transpose(output))
+    D = squared_dist(input, tf.transpose(output))
     d_min = tf.math.reduce_min(D, axis=1)
     # s = tf.argsort(D.numpy(), axis=1)[:, :2].numpy()
     # for i in range(self.N):
@@ -23,13 +25,3 @@ def qe_loss(input, output):
     # self.loss_Q_.append(Eq.numpy())
     # self.loss_E_.append(El.numpy())
     return Eq
-
-
-def _squared_dist(A, B):
-    row_norms_A = tf.reduce_sum(tf.square(A), axis=1)
-    row_norms_A = tf.reshape(row_norms_A, [-1, 1])  # Column vector.
-
-    row_norms_B = tf.reduce_sum(tf.square(B), axis=1)
-    row_norms_B = tf.reshape(row_norms_B, [1, -1])  # Row vector.
-
-    return row_norms_A - 2 * tf.matmul(A, tf.transpose(B)) + row_norms_B

@@ -3,7 +3,7 @@ from tensorflow.keras import layers, Model, metrics
 import numpy as np
 from tqdm import tqdm
 
-from cole import qe_loss
+from ._loss import qe_loss
 
 mae_metric = metrics.MeanAbsoluteError(name="mae")
 loss_tracker = metrics.Mean(name="loss")

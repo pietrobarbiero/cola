@@ -3,6 +3,7 @@ import os
 
 from keras.datasets.mnist import load_data
 from sklearn import clone, datasets
+from sklearn.cluster import KMeans
 from sklearn.datasets import make_circles, make_moons, make_blobs, load_digits
 from sklearn.manifold import TSNE
 from sklearn.preprocessing import StandardScaler
@@ -17,7 +18,7 @@ import tensorflow as tf
 from tensorflow.keras import Input
 from tensorflow.keras.models import Model
 
-from cole import DualModel, qe_loss
+from cole import DualModel, qe_loss, plot_confusion_matrix
 
 
 def main():
@@ -54,11 +55,11 @@ def main():
     x_digits, y_digits = load_digits(return_X_y=True)
 
     datasets = {
-        "digits": (x_digits, y_digits),
+        # "digits": (x_digits, y_digits),
         # "mnist": (x_test, y_test),
         # "gabri": (X_gabri, y_gabri),
         # "noisy_circles": noisy_circles,
-        # "noisy_moons": noisy_moons,
+        "noisy_moons": noisy_moons,
         # "blobs": blobs,
         # "aniso": aniso,
         # "varied": varied,
@@ -79,9 +80,11 @@ def main():
         lbd = 0.01
 
         inputs = Input(shape=(d,), name='input')
-        outputs = Dense(32)(inputs)
-        # x = Dense(16)(x)
-        # outputs = Dense(8)(x)
+        outputs = inputs
+        x = Dense(32)(inputs)
+        # x = Dense(128)(x)
+        # x = Dense(256)(x)
+        # outputs = Dense(512)(x)
         # model = DualModel(n_samples=n, k_prototypes=k, inputs=inputs, outputs=outputs)
         model = DualModel(n_samples=n, k_prototypes=k, inputs=inputs, outputs=outputs)
         optimizer = tf.keras.optimizers.Adam(learning_rate=lr)
@@ -91,20 +94,27 @@ def main():
         x_pred = model.predict(X)
         prototypes = model.dual_model.predict(x_pred.T)
 
-        # tsne = TSNE(n_components=2, random_state=42)
-        # M_list = [x_pred]
-        # for i, node in enumerate(prototypes.T):
-        #     M_list.append(node.reshape(1, -1))
-        # M = np.concatenate(M_list)
-        # Mp = tsne.fit_transform(M)
-        # Xp = Mp[:X.shape[0]]
-        # Wp = Mp[X.shape[0]:]
-        #
-        # plt.figure()
-        # # plt.scatter(X[:, 0], X[:, 1])
-        # plt.scatter(Xp[:, 0], Xp[:, 1])
-        # plt.scatter(Wp[:, 0], Wp[:, 1], s=100)
-        # plt.show()
+        plot_confusion_matrix(x_pred, prototypes, y,
+                              file_name=os.path.join(results_dir, f"{dataset}_confmat_dual.pdf"))
+
+        tsne = TSNE(n_components=2, random_state=42)
+        M_list = [x_pred]
+        for i, node in enumerate(prototypes.T):
+            M_list.append(node.reshape(1, -1))
+        M = np.concatenate(M_list)
+        Mp = tsne.fit_transform(M)
+        Xp = Mp[:X.shape[0]]
+        Wp = Mp[X.shape[0]:]
+        plt.figure()
+        # plt.scatter(X[:, 0], X[:, 1])
+        plt.scatter(Xp[:, 0], Xp[:, 1], c=y)
+        plt.scatter(Wp[:, 0], Wp[:, 1], s=100, c='orange')
+        plt.show()
+
+        k_means = KMeans(n_clusters=k)
+        k_means.fit(x_pred)
+        plot_confusion_matrix(x_pred, k_means.cluster_centers_.T, y,
+                              file_name=os.path.join(results_dir, f"{dataset}_confmat_kmeans.pdf"))
 
 
 if __name__ == "__main__":
