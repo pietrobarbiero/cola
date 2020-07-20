@@ -18,7 +18,7 @@ import tensorflow as tf
 from tensorflow.keras import Input
 from tensorflow.keras.models import Model
 
-from cole import DualModel, qe_loss, plot_confusion_matrix, scatterplot, compute_graph
+from cole import DualModel, qe_loss, plot_confusion_matrix, scatterplot, compute_graph, BaseModel
 
 
 def main():
@@ -56,9 +56,9 @@ def main():
 
     datasets = {
         # "digits": (x_digits, y_digits),
-        "mnist": (x_test[:2000], y_test[:2000]),
+        # "mnist": (x_test[:2000], y_test[:2000]),
         # "gabri": (X_gabri, y_gabri),
-        # "noisy_circles": noisy_circles,
+        "noisy_circles": noisy_circles,
         # "noisy_moons": noisy_moons,
         # "blobs": blobs,
         # "aniso": aniso,
@@ -75,10 +75,27 @@ def main():
         n = X.shape[0]
         d = X.shape[1]
         latent_dim = 2
-        k = 100
+        k = 30
         lr = 0.0008
-        epochs = 2000
+        epochs = 400
         lbd = 0.01
+
+        inputs = Input(shape=(d,), name='input')
+        outputs = inputs
+        model = BaseModel(n_features=d, k_prototypes=k, inputs=inputs, outputs=outputs)
+        optimizer = tf.keras.optimizers.Adam(learning_rate=0.008)
+        model.compile(optimizer=optimizer)
+        model.summary()
+        model.fit(X, y, epochs=epochs)
+        x_pred = model.predict(X)
+        prototypes = model.base_model.weights[0].numpy()
+        G = compute_graph(x_pred, prototypes)
+        plt.figure()
+        plot_confusion_matrix(x_pred, prototypes, y)
+        plt.show()
+        plt.figure()
+        scatterplot(x_pred, prototypes, y, valid=False)
+        plt.show()
 
         inputs = Input(shape=(d,), name='input')
         outputs = inputs
@@ -97,9 +114,9 @@ def main():
         plt.figure()
         plot_confusion_matrix(x_pred, prototypes, y)
         plt.show()
-        # plt.figure()
-        # scatterplot(x_pred, prototypes, y, valid=False)
-        # plt.show()
+        plt.figure()
+        scatterplot(x_pred, prototypes, y, valid=False)
+        plt.show()
 
         k1 = len(G.nodes)
         k_means = KMeans(n_clusters=k1)
