@@ -7,7 +7,8 @@ from sklearn.cluster import KMeans
 from sklearn.datasets import make_circles, make_moons, make_blobs, load_digits
 from sklearn.manifold import TSNE
 from sklearn.preprocessing import StandardScaler
-from tensorflow.python.keras.layers import Dense
+from tensorflow.python.keras.layers import Dense, GlobalAveragePooling2D, Flatten
+from tensorflow.python.keras.utils.np_utils import to_categorical
 from tensorflow.python.keras.utils.vis_utils import plot_model
 from tqdm import tqdm
 import pandas as pd
@@ -18,7 +19,7 @@ import tensorflow as tf
 from tensorflow.keras import Input
 from tensorflow.keras.models import Model
 
-from cole import DualModel, qe_loss, plot_confusion_matrix, scatterplot, compute_graph, BaseModel
+from cole import DualModel, quantization, plot_confusion_matrix, scatterplot, compute_graph, BaseModel
 
 
 def main():
@@ -49,16 +50,27 @@ def main():
     # sns.scatterplot(X_gabri[:, 0], X_gabri[:, 1], hue=y)
     # plt.show()
 
+    theta = np.radians(np.linspace(30, 360 * 4, n_samples))
+    r = theta ** 2
+    x_2 = r * np.cos(theta)
+    y_2 = r * np.sin(theta)
+    X_spiral = np.vstack([x_2, y_2]).T
+    y_spiral = np.zeros(len(X_spiral))
+    # plt.figure()
+    # plt.scatter(x_2, y_2)
+    # plt.show()
+
     (x_train, y_train), (x_test, y_test) = load_data()
     x_test = np.reshape(x_test, (x_test.shape[0], x_test.shape[1]*x_test.shape[1]))
 
     x_digits, y_digits = load_digits(return_X_y=True)
 
     datasets = {
+        # "Spiral": (X_spiral, y_spiral),
         # "digits": (x_digits, y_digits),
-        # "mnist": (x_test[:2000], y_test[:2000]),
+        "mnist": (x_test[:5000], y_test[:5000]),
         # "gabri": (X_gabri, y_gabri),
-        "noisy_circles": noisy_circles,
+        # "noisy_circles": noisy_circles,
         # "noisy_moons": noisy_moons,
         # "blobs": blobs,
         # "aniso": aniso,
@@ -70,14 +82,59 @@ def main():
     for dataset, data in progress_bar:
         progress_bar.set_description("Analysis of dataset: %s" % dataset)
         X, y = data
+
+        # if dataset == 'mnist':
+        #     mnist_file = os.path.join(results_dir, 'mnist.csv')
+        #     if not os.path.isfile(mnist_file):
+        #         X2 = X / 255
+        #         X3 = np.expand_dims(X2, axis=3)
+        #         X4 = np.append(X3, X3, axis=3)
+        #         X4 = np.append(X4, X3, axis=3)
+        #         XZ = np.zeros((X4.shape[0], 32, 32, 3))
+        #         XZ[:, 2:30, 2:30, :] = X4
+        #         IMG_SHAPE = (32, 32, 3)
+        #         pretrained_model = tf.keras.applications.MobileNet(input_shape=IMG_SHAPE,
+        #                                                      include_top=False,
+        #                                                      weights='imagenet')
+        #         # Unfreeze the base model
+        #         pretrained_model.trainable = True
+        #         inputs = Input(shape=IMG_SHAPE)
+        #         x = pretrained_model(inputs, training=True)
+        #         x = GlobalAveragePooling2D()(x)
+        #         outputs = Dense(len(set(y)))(x)
+        #         pre_model = Model(inputs, outputs)
+        #         pre_model.compile(optimizer=tf.keras.optimizers.Adam(1e-5),  # Very low learning rate
+        #                       loss=tf.keras.losses.CategoricalCrossentropy(from_logits=True),
+        #                       metrics=[tf.keras.metrics.CategoricalAccuracy()])
+        #
+        #         # Train end-to-end. Be careful to stop before you overfit!
+        #         pre_model.fit(XZ, to_categorical(y), epochs=70, batch_size=200)
+        #
+        #         preds = pretrained_model.predict(XZ)
+        #         X = np.reshape(preds, (preds.shape[0], preds.shape[-1]))
+        #         Xpd = pd.DataFrame(X)
+        #         Xpd.to_csv(mnist_file)
+        #
+        #     else:
+        #         X = pd.read_csv(mnist_file, index_col=0).values
+        #
+        #     # # Freeze base model
+        #     # pretrained_model.trainable = False
+        #     # # Create new model on top.
+        #     # inputs = Input(shape=IMG_SHAPE)
+        #     # x = pretrained_model(inputs, training=False)
+        #     # x = GlobalAveragePooling2D()(x)
+        #     # outputs = Flatten()(x)
+        #     # X = XZ
+
         X = StandardScaler().fit_transform(X)
 
         n = X.shape[0]
         d = X.shape[1]
         latent_dim = 2
-        k = 30
-        lr = 0.0008
-        epochs = 400
+        k = 100
+        lr = 0.008
+        epochs = 800
         lbd = 0.01
 
         inputs = Input(shape=(d,), name='input')
@@ -93,14 +150,14 @@ def main():
         plt.figure()
         plot_confusion_matrix(x_pred, prototypes, y)
         plt.show()
-        plt.figure()
-        scatterplot(x_pred, prototypes, y, valid=False)
-        plt.show()
+        # plt.figure()
+        # scatterplot(x_pred, prototypes, y, valid=False)
+        # plt.show()
 
         inputs = Input(shape=(d,), name='input')
         outputs = inputs
         # x = Dense(512)(inputs)
-        # x = Dense(256)(x)
+        # outputs = Dense(256)(x)
         # x = Dense(128)(x)
         # outputs = Dense(64)(x)
         model = DualModel(n_samples=n, k_prototypes=k, inputs=inputs, outputs=outputs)
@@ -114,9 +171,9 @@ def main():
         plt.figure()
         plot_confusion_matrix(x_pred, prototypes, y)
         plt.show()
-        plt.figure()
-        scatterplot(x_pred, prototypes, y, valid=False)
-        plt.show()
+        # plt.figure()
+        # scatterplot(x_pred, prototypes, y, valid=False)
+        # plt.show()
 
         k1 = len(G.nodes)
         k_means = KMeans(n_clusters=k1)

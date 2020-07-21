@@ -2,7 +2,7 @@ import tensorflow as tf
 from tensorflow.keras import layers, Model, metrics
 from tqdm import tqdm
 
-from ._loss import qe_loss
+from ._loss import quantization
 
 mae_metric = metrics.MeanAbsoluteError(name="mae")
 loss_tracker = metrics.Mean(name="loss")
@@ -13,6 +13,9 @@ class BaseModel(Model):
     def __init__(self, n_features, k_prototypes, *args, **kwargs):
         super().__init__(*args, **kwargs)
         input = layers.Input(shape=(n_features,))
+        # x = layers.Dense(n_features, activation='tanh')(input)
+        # x = layers.Dense(n_features, activation='tanh')(x)
+        # output = layers.Dense(k_prototypes, use_bias=False)(x)
         output = layers.Dense(k_prototypes, use_bias=False)(input)
         self.base_model = tf.keras.Model(inputs=input, outputs=output)
 
@@ -25,7 +28,7 @@ class BaseModel(Model):
         for epoch in pbar:
             with tf.GradientTape() as tape:
                 y_latent = self(x, training=True)  # Forward pass
-                loss = qe_loss(y_latent, self.base_model.weights[0])
+                loss = quantization(y_latent, self.base_model.weights[-1])
 
             # Compute gradients
             trainable_vars = self.trainable_variables

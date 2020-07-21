@@ -101,11 +101,14 @@ def scatterplot(X, prototypes, y, valid=True, links=True):
         Wp = Wp[G.nodes]
 
     c = '#00838F'
+    fig, ax = plt.subplots()
     cmap = sns.color_palette(sns.color_palette("hls", len(set(y))))
     sns.scatterplot(Xp[:, 0], Xp[:, 1], hue=y, palette=cmap, hue_order=set(y), alpha=0.3, legend=False)
     plt.scatter(Wp[:, 0], Wp[:, 1], s=200, c=c)
     if links:
         nx.draw_networkx_edges(G, pos=pos, width=2, edge_color=c)
+    ax.axis('off')
+    plt.tight_layout()
 
 
 def squared_dist(A, B):
