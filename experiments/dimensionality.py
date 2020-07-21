@@ -107,7 +107,7 @@ def main():
             # return
 
             ni2 = int(nf * ni)
-            N = int(ns/50)
+            N = int(ns/20)
             # num_epochs = 1
             num_epochs = 300
             lr_dual = 0.008
