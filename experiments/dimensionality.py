@@ -72,7 +72,7 @@ def main():
                         level=logging.INFO)
 
     experiments = {}
-    n_samples = [100, 1000, ]  # 10000]
+    n_samples = [100, 1000, 10000]
     n_informative = [1.0, 0.5]
     n_features = [100, 300, 1000, 3000, 10000]  # 100000
     for ns in n_samples:
@@ -107,7 +107,7 @@ def main():
             # return
 
             ni2 = int(nf * ni)
-            N = int(ns/100)
+            N = int(ns/50)
             # num_epochs = 1
             num_epochs = 300
             lr_dual = 0.008
@@ -134,7 +134,7 @@ def main():
             acc_dbscan = []
             acc_rf = []
             steps = []
-            progress_bar_3 = tqdm(range(repetitions), position=10)
+            progress_bar_3 = tqdm(range(repetitions), position=1)
             for i in progress_bar_3:
                 X, y = make_classification(n_samples=ns, n_features=nf, class_sep=8,
                                            n_informative=ni2, n_redundant=0, hypercube=True,
