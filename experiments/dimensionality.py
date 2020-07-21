@@ -32,11 +32,11 @@ def main():
 
     experiments = {}
     # n_samples = [100, 1000]
-    n_samples = [100]
+    n_samples = [1000]
     # n_informative = [1.0, 0.5]
     n_informative = [1.0]
     # n_features = [100, 300, 1000, 3000, 10000]  # 100000
-    n_features = [100, 300, 1000, 2000, 3000]  # 100000
+    n_features = [100, 300, 800]  # 100000
     for ns in n_samples:
         # for nf in n_features:
             for ni in n_informative:
@@ -100,7 +100,7 @@ def main():
 
                 # Base
                 inputs = Input(shape=(nf,), name='input')
-                model = BaseModel(n_features=nf, k_prototypes=k, inputs=inputs, outputs=inputs)
+                model = BaseModel(n_features=nf, k_prototypes=k, deep=False, inputs=inputs, outputs=inputs)
                 optimizer = tf.keras.optimizers.Adam(learning_rate=lr_base)
                 model.compile(optimizer=optimizer)
                 model.summary()
@@ -110,22 +110,22 @@ def main():
                 accuracy = score(X, prototypes, y)
                 list_acc_base.append(accuracy)
                 base_loss_Q.extend(model.loss_)
-                # Deep base
-                inputs = Input(shape=(nf,), name='input')
-                model = BaseModel(n_features=nf, k_prototypes=k, inputs=inputs, outputs=inputs)
-                optimizer = tf.keras.optimizers.Adam(learning_rate=lr_base)
-                model.compile(optimizer=optimizer)
-                model.summary()
-                model.fit(X, y, epochs=epochs)
-                x_pred = model.predict(X)
-                prototypes = model.base_model.weights[-1].numpy()
-                accuracy = score(X, prototypes, y)
-                list_acc_deep_base.append(accuracy)
-                deep_base_loss_Q.extend(model.loss_)
+                # # Deep base
+                # inputs = Input(shape=(nf,), name='input')
+                # model = BaseModel(n_features=nf, k_prototypes=k, inputs=inputs, outputs=inputs)
+                # optimizer = tf.keras.optimizers.Adam(learning_rate=lr_base)
+                # model.compile(optimizer=optimizer)
+                # model.summary()
+                # model.fit(X, y, epochs=epochs)
+                # x_pred = model.predict(X)
+                # prototypes = model.base_model.weights[-1].numpy()
+                # accuracy = score(X, prototypes, y)
+                # list_acc_deep_base.append(accuracy)
+                # deep_base_loss_Q.extend(model.loss_)
 
                 # Dual
                 inputs = Input(shape=(nf,), name='input')
-                model = DualModel(n_samples=ns, k_prototypes=k, inputs=inputs, outputs=inputs)
+                model = DualModel(n_samples=ns, k_prototypes=k, deep=False, inputs=inputs, outputs=inputs)
                 optimizer = tf.keras.optimizers.Adam(learning_rate=lr_dual)
                 model.compile(optimizer=optimizer)
                 model.summary()
@@ -201,7 +201,7 @@ def main():
             'number_info_feature': ni_count,
             'base': list_acc_base,
             'dual': list_acc_dual,
-            'deep-base': list_acc_deep_base,
+            # 'deep-base': list_acc_deep_base,
             'deep-dual': list_acc_deep_dual,
             'kmeans': list_acc_kmeans,
         })
@@ -210,7 +210,7 @@ def main():
         plt.figure(figsize=[4, 3])
         sns.lineplot('number_feature', 'base', data=accuracies, label='base', ci=99)
         sns.lineplot('number_feature', 'dual', data=accuracies, label='dual', ci=99)
-        sns.lineplot('number_feature', 'deep-base', data=accuracies, label='deep-base', ci=99)
+        # sns.lineplot('number_feature', 'deep-base', data=accuracies, label='deep-base', ci=99)
         sns.lineplot('number_feature', 'deep-dual', data=accuracies, label='deep-dual', ci=99)
         sns.lineplot('number_feature', 'kmeans', data=accuracies, label='kmeans', ci=99)
         plt.xscale('log', basex=10)
