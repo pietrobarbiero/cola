@@ -38,7 +38,7 @@ class DeepTopologicalClustering():
                     confusion_matrix[km, k] += v
         return confusion_matrix
 
-    def plot_confusion_matrix(self, y, title='', file_name=None, figsize=[5, 5]):
+    def plot_confusion_matrix(self, y, title='', file_name=None, figsize=[5, 5], show=True):
         confmat = self._compute_confusion_matrix(y)
         plt.figure(figsize=figsize)
         sns.heatmap(confmat.astype('int'), annot=True, fmt='d',
@@ -48,7 +48,10 @@ class DeepTopologicalClustering():
         plt.xlabel('predicted')
         plt.tight_layout()
         plt.savefig(file_name)
-        plt.show()
+        if show:
+            plt.show()
+        else:
+            plt.close()
         return
 
     def score(self, y):
@@ -84,8 +87,8 @@ class DeepTopologicalClustering():
         self.loss_Q_ = []
         self.loss_E_ = []
         self.node_list_ = []
-        pbar = tqdm(range(self.num_epochs))
-        for epoch in pbar:
+        pbar = tqdm(range(self.num_epochs)) if self.verbose else None
+        for epoch in range(self.num_epochs):
             loss_value, grads, adjacency_matrix = self._grad()
             self.loss_vals.append(loss_value.numpy())
             self.optimizer_.apply_gradients(zip(grads, self.kmodel_.trainable_variables))
@@ -95,7 +98,8 @@ class DeepTopologicalClustering():
                 self.centroids_ = self.output_
             self.compute_graph()
             self.node_list_.append(len(self.G_.nodes))
-            pbar.set_description(f"Epoch: {epoch} - Loss: {loss_value:.2f}")
+            if self.verbose:
+                pbar.set_description(f"Epoch: {epoch} - Loss: {loss_value:.2f}")
         return self
 
     def _grad(self):

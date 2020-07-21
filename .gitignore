@@ -102,3 +102,8 @@ venv.bak/
 
 # mypy
 .mypy_cache/
+.idea/modules.xml
+experiments/dimensionality5/old/accuracies_Blobs_#s-100_%i-100.0.pdf
+experiments/dimensionality5/
+experiments/paper0/
+.idea/

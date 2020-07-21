@@ -45,7 +45,7 @@ def compute_confusion_matrix(model, X, y, N):
     return confusion_matrix
 
 
-def plot_confusion_matrix(confmat, title='', file_name=None, figsize=[5, 5]):
+def plot_confusion_matrix(confmat, title='', file_name=None, figsize=[5, 5], show=True):
     score = sum(np.diag(confmat)) / sum(sum(confmat))
     title = f'Accuracy: {score:.4f}'
     plt.figure(figsize=figsize)
@@ -56,7 +56,10 @@ def plot_confusion_matrix(confmat, title='', file_name=None, figsize=[5, 5]):
     plt.xlabel('predicted')
     plt.tight_layout()
     plt.savefig(file_name)
-    plt.show()
+    if show:
+        plt.show()
+    else:
+        plt.close()
     return
 
 
@@ -69,162 +72,198 @@ def main():
                         level=logging.INFO)
 
     experiments = {}
-    n_samples = [500]
-    n_features = [100]
-    n_informative = [100]
+    n_samples = [100, 1000, ]  # 10000]
+    n_informative = [1.0, 0.5]
+    n_features = [100, 300, 1000, 3000, 10000]  # 100000
     for ns in n_samples:
-        for nf in n_features:
+        # for nf in n_features:
             for ni in n_informative:
-                if ni <= nf:
-                    # print(f'{nf} {ni}')
-                    experiments[f's_{ns}_f_{nf}_i_{ni}'] = [ns, nf, ni]
+                # if ni <= nf:
+                #     print(f'{nf} {ni}')
+                    experiments[f's_{ns}_i_{ni}'] = [ns, ni]
 
-    acc_base = []
-    acc_dual = []
-    acc_kmeans = []
+    list_acc_base = []
+    list_acc_dual = []
+    list_acc_kmeans = []
     ns_count = []
     nf_count = []
     ni_count = []
     ds_name = []
     bar_position = 0
     progress_bar = tqdm(experiments.items(), position=bar_position)
-    for dataset, data in progress_bar:
+    for j, (dataset, data) in enumerate(progress_bar):
         progress_bar.set_description("Analysis of dataset: %s" % dataset)
+        ns, ni = data
+        progress_bar_2 = tqdm(n_features, position=1)
+        for nf in progress_bar_2:
 
-        ns, nf, ni = data
-        nr = nf - ni
-        X, y = make_classification(n_samples=ns, n_features=nf, class_sep=8,
-                                   n_informative=ni, n_redundant=nr, hypercube=False,
-                                   n_classes=2, n_clusters_per_class=1, random_state=42)
-        X = StandardScaler().fit_transform(X)
+            # Xc = np.matmul(X, X.T)
+            # V = np.linalg.eig(Xc)[1]
+            # np.matmul(V.T, X).shape
 
-        # Xc = np.matmul(X, X.T)
-        # V = np.linalg.eig(Xc)[1]
-        # np.matmul(V.T, X).shape
+            # plt.figure()
+            # plt.plot(np.arange(len(E[0])), E[0])
+            # plt.show()
+            # return
 
-        # plt.figure()
-        # plt.plot(np.arange(len(E[0])), E[0])
-        # plt.show()
-        # return
+            ni2 = int(nf * ni)
+            N = int(ns/100)
+            # num_epochs = 1
+            num_epochs = 300
+            lr_dual = 0.008
+            lr_base = 0.008
+            lmb_dual = 0  # 0.01
+            lmb_base = 0  # 0.01
+            repetitions = 10
+            # repetitions = 1
 
-        N = 100
-        num_epochs = 400
-        lr_dual = 0.008
-        lr_base = 0.008
-        lmb_dual = 0 #0.01
-        lmb_base = 0 #0.01
-        repetitions = 1
+            acc_base = []
+            acc_dual = []
+            acc_kmeans = []
+            kmeans_losses = []
+            mlp_losses = []
+            mlp_loss_Q = []
+            mlp_loss_E = []
+            mlp_time = []
+            mlp_nodes = []
+            trans_losses = []
+            trans_loss_Q = []
+            trans_loss_E = []
+            trans_time = []
+            trans_nodes = []
+            acc_dbscan = []
+            acc_rf = []
+            steps = []
+            progress_bar_3 = tqdm(range(repetitions), position=10)
+            for i in progress_bar_3:
+                X, y = make_classification(n_samples=ns, n_features=nf, class_sep=8,
+                                           n_informative=ni2, n_redundant=0, hypercube=True,
+                                           n_classes=2, n_clusters_per_class=1, random_state=i)
+                X = StandardScaler().fit_transform(X)
 
-        kmeans_losses = []
-        mlp_losses = []
-        mlp_loss_Q = []
-        mlp_loss_E = []
-        mlp_time = []
-        mlp_nodes = []
-        trans_losses = []
-        trans_loss_Q = []
-        trans_loss_E = []
-        trans_time = []
-        trans_nodes = []
-        acc_dbscan = []
-        acc_rf = []
-        steps = []
-        for i in range(repetitions):
-            model_mlp = DeepCompetitiveLayer(verbose=False, lmb=lmb_base,
-                                             N=N, num_epochs=num_epochs, lr=lr_base)
-            start_time = time.time()
-            model_mlp.fit(X)
-            mlp_time.append(time.time() - start_time)
-            accuracy = model_mlp.score(y)
-            acc_base.append(accuracy)
-            title = f'Accuracy: {accuracy:.4f}'
-            model_mlp.plot_confusion_matrix(y, title, os.path.join(results_dir, f"{dataset}_confmat_base.pdf"))
-            # model_mlp.compute_graph()
-            # model_mlp.plot_graph(y, os.path.join(results_dir, f"{dataset}_base.png"))
-            mlp_losses.extend(model_mlp.loss_vals)
-            mlp_loss_Q.extend(model_mlp.loss_Q_)
-            mlp_loss_E.extend(model_mlp.loss_E_)
-            mlp_nodes.extend(model_mlp.node_list_)
+                model_mlp = DeepCompetitiveLayer(verbose=False, lmb=lmb_base,
+                                                 N=N, num_epochs=num_epochs, lr=lr_base)
+                start_time = time.time()
+                model_mlp.fit(X)
+                mlp_time.append(time.time() - start_time)
+                accuracy = model_mlp.score(y)
+                acc_base.append(accuracy)
+                title = f'Accuracy: {accuracy:.4f}'
+                # model_mlp.plot_confusion_matrix(y, title, os.path.join(results_dir, f"{dataset}_f_{nf}_{i}_confmat_base.pdf"), show=False)
+                # model_mlp.compute_graph()
+                # model_mlp.plot_graph(y, os.path.join(results_dir, f"{dataset}_base.png"))
+                mlp_losses.extend(model_mlp.loss_vals)
+                mlp_loss_Q.extend(model_mlp.loss_Q_)
+                mlp_loss_E.extend(model_mlp.loss_E_)
+                mlp_nodes.extend(model_mlp.node_list_)
 
-            model_trans = DeepTopologicalClustering(verbose=False, lmb=lmb_dual,
-                                                    N=N, num_epochs=num_epochs, lr=lr_dual)
-            start_time = time.time()
-            model_trans.fit(X)
-            trans_time.append(time.time() - start_time)
-            accuracy = model_trans.score(y)
-            acc_dual.append(accuracy)
-            title = f'Accuracy: {accuracy:.4f}'
-            model_trans.plot_confusion_matrix(y, title, os.path.join(results_dir, f"{dataset}_confmat_dual.pdf"))
-            # model_trans.compute_graph()
-            # model_trans.plot_graph(y, os.path.join(results_dir, f"{dataset}_dual.png"))
-            trans_losses.extend(model_trans.loss_vals)
-            trans_loss_Q.extend(model_trans.loss_Q_)
-            trans_loss_E.extend(model_trans.loss_E_)
-            trans_nodes.extend(model_trans.node_list_)
+                model_trans = DeepTopologicalClustering(verbose=False, lmb=lmb_dual,
+                                                        N=N, num_epochs=num_epochs, lr=lr_dual)
+                start_time = time.time()
+                model_trans.fit(X)
+                trans_time.append(time.time() - start_time)
+                accuracy = model_trans.score(y)
+                acc_dual.append(accuracy)
+                title = f'Accuracy: {accuracy:.4f}'
+                # model_trans.plot_confusion_matrix(y, title, os.path.join(results_dir, f"{dataset}_f_{nf}_{i}_confmat_dual.pdf"), show=False)
+                # model_trans.compute_graph()
+                # model_trans.plot_graph(y, os.path.join(results_dir, f"{dataset}_dual.png"))
+                trans_losses.extend(model_trans.loss_vals)
+                trans_loss_Q.extend(model_trans.loss_Q_)
+                trans_loss_E.extend(model_trans.loss_E_)
+                trans_nodes.extend(model_trans.node_list_)
 
-            model_km = KMeans(n_clusters=N).fit(X)
-            D = _squared_dist(tf.Variable(X), tf.Variable(model_km.cluster_centers_))
-            d_min = tf.math.reduce_min(D, axis=1)
-            loss = tf.norm(d_min).numpy()
-            kmeans_losses.extend(len(model_trans.loss_Q_) * [loss])
-            confmat = compute_confusion_matrix(model_km, X, y, N)
-            score = sum(np.diag(confmat)) / sum(sum(confmat))
-            acc_kmeans.append(score)
-            plot_confusion_matrix(confmat, file_name=os.path.join(results_dir, f"{dataset}_confmat_kmeans.pdf"))
+                model_km = KMeans(n_clusters=N, init='random', random_state=i).fit(X)
+                D = _squared_dist(tf.Variable(X), tf.Variable(model_km.cluster_centers_))
+                d_min = tf.math.reduce_min(D, axis=1)
+                loss = tf.norm(d_min).numpy()
+                kmeans_losses.extend(len(model_trans.loss_Q_) * [loss])
+                confmat = compute_confusion_matrix(model_km, X, y, N)
+                score = sum(np.diag(confmat)) / sum(sum(confmat))
+                acc_kmeans.append(score)
+                # plot_confusion_matrix(confmat, file_name=os.path.join(results_dir, f"{dataset}_f_{nf}_{i}_confmat_kmeans.pdf"), show=False)
 
-            steps.extend(np.arange(0, len(model_trans.loss_vals)))
-            ns_count.append(ns)
-            nf_count.append(nf)
-            ni_count.append(ni)
-            ds_name.append(f'S {ns} - F {nf} - I {ni}')
+                steps.extend(np.arange(0, len(model_trans.loss_vals)))
+                ns_count.append(ns)
+                nf_count.append(nf)
+                ni_count.append(ni)
+                ds_name.append(f'S {ns} - I {ni}')
 
-        losses_Q = pd.DataFrame({
-            'epoch': steps,
-            'base': mlp_loss_Q,
-            'dual': trans_loss_Q,
-            'kmeans': kmeans_losses,
+            losses_Q = pd.DataFrame({
+                'epoch': steps,
+                'base': mlp_loss_Q,
+                'dual': trans_loss_Q,
+                'kmeans': kmeans_losses,
+            })
+
+            sns.set_style('whitegrid')
+            plt.figure(figsize=[4, 3])
+            sns.lineplot('epoch', 'base', data=losses_Q, label='base', ci=99)
+            sns.lineplot('epoch', 'dual', data=losses_Q, label='dual', ci=99)
+            sns.lineplot('epoch', 'kmeans', data=losses_Q, label='kmeans', ci=99)
+            # plt.yscale('log')
+            plt.ylabel('Q')
+            plt.title(f'{dataset}_f_{nf}')
+            plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.3), ncol=2)
+            plt.tight_layout()
+            plt.savefig(os.path.join(results_dir, f'{dataset}_f_{nf}_loss_q.png'))
+            plt.savefig(os.path.join(results_dir, f'{dataset}_f_{nf}_loss_q.pdf'))
+            plt.show()
+
+            # Add accuracies of iterations for current dataset
+            list_acc_base += acc_base
+            list_acc_dual += acc_dual
+            list_acc_kmeans += acc_kmeans
+
+        accuracies = pd.DataFrame({
+            'number_sample': ns_count,
+            'number_feature': nf_count,
+            'number_info_feature': ni_count,
+            'base': list_acc_base,
+            'dual': list_acc_dual,
+            'kmeans': list_acc_kmeans,
         })
 
         sns.set_style('whitegrid')
         plt.figure(figsize=[4, 3])
-        sns.lineplot('epoch', 'base', data=losses_Q, label='base', ci=99)
-        sns.lineplot('epoch', 'dual', data=losses_Q, label='dual', ci=99)
-        sns.lineplot('epoch', 'kmeans', data=losses_Q, label='kmeans', ci=99)
-        # plt.yscale('log')
-        plt.ylabel('Q')
-        plt.title(f'{dataset}')
+        sns.lineplot('number_feature', 'base', data=accuracies, label='base', ci=99)
+        sns.lineplot('number_feature', 'dual', data=accuracies, label='dual', ci=99)
+        sns.lineplot('number_feature', 'kmeans', data=accuracies, label='kmeans', ci=99)
+        plt.xscale('log', basex=10)
+        plt.ylabel('Accuracy')
+        plt.title(f'Accuracies on Blobs #s: {ns}, %i: {ni*100}')
         plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.3), ncol=2)
         plt.tight_layout()
-        plt.savefig(os.path.join(results_dir, f'{dataset}_loss_q.png'))
-        plt.savefig(os.path.join(results_dir, f'{dataset}_loss_q.pdf'))
+        plt.savefig(os.path.join(results_dir, f'accuracies_Blobs_#s-{ns}_%i-{ni*100}.png'))
+        plt.savefig(os.path.join(results_dir, f'accuracies_Blobs_#s-{ns}_%i-{ni*100}.pdf'))
         plt.show()
 
-    method = []
-    method.extend(['base' for _ in acc_base])
-    method.extend(['dual' for _ in acc_dual])
-    method.extend(['k-Means' for _ in acc_kmeans])
-
-    accuracies = pd.DataFrame({
-        'dataset': 3*ds_name,
-        '# samples': 3*ns_count,
-        '# features': 3*nf_count,
-        '# informative': 3*ni_count,
-        '% informative': np.array(3*ni_count)/np.array(3*nf_count),
-        'accuracy': [*acc_base, *acc_dual, *acc_kmeans],
-        'method': method,
-    })
-
-    sns.set_style('whitegrid')
-    plt.figure(figsize=[5, 10])
-    sns.boxplot(x='accuracy', y='dataset', data=accuracies,
-                hue='method')
-    plt.ylabel('accuracy')
-    plt.title(f'')
-    plt.legend(loc='upper center', bbox_to_anchor=(0.2, -0.1), ncol=3)
-    plt.tight_layout()
-    plt.savefig(os.path.join(results_dir, f'accuracies.png'))
-    plt.savefig(os.path.join(results_dir, f'accuracies.pdf'))
-    plt.show()
+    # method = []
+    # method.extend(['base' for _ in acc_base])
+    # method.extend(['dual' for _ in acc_dual])
+    # method.extend(['k-Means' for _ in acc_kmeans])
+    #
+    # accuracies = pd.DataFrame({
+    #     'dataset': 3*ds_name,
+    #     '# samples': 3*ns_count,
+    #     '# features': 3*nf_count,
+    #     '# informative': 3*ni_count,
+    #     '% informative': np.array(3*ni_count)/np.array(3*nf_count),
+    #     'accuracy': [*acc_base, *acc_dual, *acc_kmeans],
+    #     'method': method,
+    # })
+    #
+    # sns.set_style('whitegrid')
+    # plt.figure(figsize=[5, 10])
+    # sns.boxplot(x='accuracy', y='dataset', data=accuracies,
+    #             hue='method')
+    # plt.ylabel('accuracy')
+    # plt.title(f'')
+    # plt.legend(loc='upper center', bbox_to_anchor=(0.2, -0.1), ncol=3)
+    # plt.tight_layout()
+    # plt.savefig(os.path.join(results_dir, f'accuracies.png'))
+    # plt.savefig(os.path.join(results_dir, f'accuracies.pdf'))
+    # plt.show()
 
     # accuracies = pd.DataFrame({
     #     '# samples': ns_count,
