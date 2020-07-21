@@ -1,7 +1,7 @@
 import tensorflow as tf
 import numpy as np
 
-from cole._utils import squared_dist
+from ._utils import squared_dist
 
 
 def silhouette(input, output):

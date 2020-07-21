@@ -16,14 +16,55 @@ import seaborn as sns
 import time
 import logging
 import tensorflow as tf
-from tensorflow.keras import Input
 
-from cole import BaseModel, DualModel, quantization
-from cole._utils import score, compute_graph
+from deeptl import DeepCompetitiveLayer, DeepTopologicalClustering
+
+
+def _squared_dist(A, B):
+    row_norms_A = tf.reduce_sum(tf.square(A), axis=1)
+    row_norms_A = tf.reshape(row_norms_A, [-1, 1])  # Column vector.
+
+    row_norms_B = tf.reduce_sum(tf.square(B), axis=1)
+    row_norms_B = tf.reshape(row_norms_B, [1, -1])  # Row vector.
+
+    return row_norms_A - 2 * tf.matmul(A, tf.transpose(B)) + row_norms_B
+
+
+def compute_confusion_matrix(model, X, y, N):
+    D = _squared_dist(tf.Variable(X), tf.Variable(model.cluster_centers_))
+    s = tf.argmin(D.numpy(), axis=1).numpy()
+    sz = len(set(y))
+    confusion_matrix = np.zeros((sz, sz))
+    for i in range(N):
+        idx = s == i
+        if sum(idx) > 0:
+            counts = collections.Counter(y[idx])
+            km, vm = counts.most_common(1)[0]
+            for k, v in counts.items():
+                confusion_matrix[km, k] += v
+    return confusion_matrix
+
+
+def plot_confusion_matrix(confmat, title='', file_name=None, figsize=[5, 5], show=True):
+    score = sum(np.diag(confmat)) / sum(sum(confmat))
+    title = f'Accuracy: {score:.4f}'
+    plt.figure(figsize=figsize)
+    sns.heatmap(confmat.astype('int'), annot=True, fmt='d',
+                cbar=False, square=True, cmap='Greens')
+    plt.title(title)
+    plt.ylabel('true')
+    plt.xlabel('predicted')
+    plt.tight_layout()
+    plt.savefig(file_name)
+    if show:
+        plt.show()
+    else:
+        plt.close()
+    return
 
 
 def main():
-    results_dir = "./dimensionality6"
+    results_dir = "./dimensionality5"
     if not os.path.exists(results_dir):
         os.makedirs(results_dir)
 
@@ -31,11 +72,9 @@ def main():
                         level=logging.INFO)
 
     experiments = {}
-    # n_samples = [100, 1000]
-    n_samples = [100]
+    n_samples = [100, 1000, 10000]
     n_informative = [1.0, 0.5]
-    # n_features = [100, 300, 1000, 3000, 10000]  # 100000
-    n_features = [100, 300, 1000, 2000, 3000, 5000]  # 100000
+    n_features = [100, 300, 1000, 3000, 10000]  # 100000
     for ns in n_samples:
         # for nf in n_features:
             for ni in n_informative:
@@ -45,8 +84,6 @@ def main():
 
     list_acc_base = []
     list_acc_dual = []
-    list_acc_deep_base = []
-    list_acc_deep_dual = []
     list_acc_kmeans = []
     ns_count = []
     nf_count = []
@@ -70,25 +107,32 @@ def main():
             # return
 
             ni2 = int(nf * ni)
-            # k = int(ns/10)
-            k = int(ns/10)
-            # epochs = 300
-            epochs = 1000
+            N = int(ns/20)
+            # num_epochs = 1
+            num_epochs = 300
             lr_dual = 0.008
             lr_base = 0.008
             lmb_dual = 0  # 0.01
             lmb_base = 0  # 0.01
-            # repetitions = 10
             repetitions = 10
+            # repetitions = 1
 
             acc_base = []
             acc_dual = []
             acc_kmeans = []
             kmeans_losses = []
-            base_loss_Q = []
-            deep_base_loss_Q = []
-            dual_loss_Q = []
-            deep_dual_loss_Q = []
+            mlp_losses = []
+            mlp_loss_Q = []
+            mlp_loss_E = []
+            mlp_time = []
+            mlp_nodes = []
+            trans_losses = []
+            trans_loss_Q = []
+            trans_loss_E = []
+            trans_time = []
+            trans_nodes = []
+            acc_dbscan = []
+            acc_rf = []
             steps = []
             progress_bar_3 = tqdm(range(repetitions), position=1)
             for i in progress_bar_3:
@@ -97,102 +141,79 @@ def main():
                                            n_classes=2, n_clusters_per_class=1, random_state=i)
                 X = StandardScaler().fit_transform(X)
 
-                # Base
-                inputs = Input(shape=(nf,), name='input')
-                model = BaseModel(n_features=nf, k_prototypes=k, inputs=inputs, outputs=inputs)
-                optimizer = tf.keras.optimizers.Adam(learning_rate=lr_base)
-                model.compile(optimizer=optimizer)
-                model.summary()
-                model.fit(X, y, epochs=epochs)
-                x_pred = model.predict(X)
-                prototypes = model.base_model.weights[-1].numpy()
-                accuracy = score(X, prototypes, y)
-                list_acc_base.append(accuracy)
-                base_loss_Q.extend(model.loss_)
-                # Deep base
-                inputs = Input(shape=(nf,), name='input')
-                model = BaseModel(n_features=nf, k_prototypes=k, inputs=inputs, outputs=inputs)
-                optimizer = tf.keras.optimizers.Adam(learning_rate=lr_base)
-                model.compile(optimizer=optimizer)
-                model.summary()
-                model.fit(X, y, epochs=epochs)
-                x_pred = model.predict(X)
-                prototypes = model.base_model.weights[-1].numpy()
-                accuracy = score(X, prototypes, y)
-                list_acc_deep_base.append(accuracy)
-                deep_base_loss_Q.extend(model.loss_)
+                model_mlp = DeepCompetitiveLayer(verbose=False, lmb=lmb_base,
+                                                 N=N, num_epochs=num_epochs, lr=lr_base)
+                start_time = time.time()
+                model_mlp.fit(X)
+                mlp_time.append(time.time() - start_time)
+                accuracy = model_mlp.score(y)
+                acc_base.append(accuracy)
+                title = f'Accuracy: {accuracy:.4f}'
+                # model_mlp.plot_confusion_matrix(y, title, os.path.join(results_dir, f"{dataset}_f_{nf}_{i}_confmat_base.pdf"), show=False)
+                # model_mlp.compute_graph()
+                # model_mlp.plot_graph(y, os.path.join(results_dir, f"{dataset}_base.png"))
+                mlp_losses.extend(model_mlp.loss_vals)
+                mlp_loss_Q.extend(model_mlp.loss_Q_)
+                mlp_loss_E.extend(model_mlp.loss_E_)
+                mlp_nodes.extend(model_mlp.node_list_)
 
-                # Dual
-                inputs = Input(shape=(nf,), name='input')
-                model = DualModel(n_samples=ns, k_prototypes=k, inputs=inputs, outputs=inputs)
-                optimizer = tf.keras.optimizers.Adam(learning_rate=lr_dual)
-                model.compile(optimizer=optimizer)
-                model.summary()
-                model.fit(X, y, epochs=epochs)
-                x_pred = model.predict(X)
-                prototypes = model.dual_model.predict(x_pred.T)
-                accuracy = score(X, prototypes, y)
-                list_acc_dual.append(accuracy)
-                dual_loss_Q.extend(model.loss_)
-                # Deep dual
-                inputs = Input(shape=(nf,), name='input')
-                model = DualModel(n_samples=ns, k_prototypes=k, inputs=inputs, outputs=inputs)
-                optimizer = tf.keras.optimizers.Adam(learning_rate=lr_dual)
-                model.compile(optimizer=optimizer)
-                model.summary()
-                model.fit(X, y, epochs=epochs)
-                x_pred = model.predict(X)
-                prototypes = model.dual_model.predict(x_pred.T)
-                accuracy = score(X, prototypes, y)
-                list_acc_deep_dual.append(accuracy)
-                deep_dual_loss_Q.extend(model.loss_)
+                model_trans = DeepTopologicalClustering(verbose=False, lmb=lmb_dual,
+                                                        N=N, num_epochs=num_epochs, lr=lr_dual)
+                start_time = time.time()
+                model_trans.fit(X)
+                trans_time.append(time.time() - start_time)
+                accuracy = model_trans.score(y)
+                acc_dual.append(accuracy)
+                title = f'Accuracy: {accuracy:.4f}'
+                # model_trans.plot_confusion_matrix(y, title, os.path.join(results_dir, f"{dataset}_f_{nf}_{i}_confmat_dual.pdf"), show=False)
+                # model_trans.compute_graph()
+                # model_trans.plot_graph(y, os.path.join(results_dir, f"{dataset}_dual.png"))
+                trans_losses.extend(model_trans.loss_vals)
+                trans_loss_Q.extend(model_trans.loss_Q_)
+                trans_loss_E.extend(model_trans.loss_E_)
+                trans_nodes.extend(model_trans.node_list_)
 
-                # k-Means
-                G = compute_graph(x_pred, prototypes)
-                k1 = len(G.nodes)
-                model_km = KMeans(n_clusters=k1, init='random', random_state=i).fit(X)
-                prototypes = model_km.cluster_centers_.T
-                loss = quantization(X, prototypes).numpy().astype('float32')
-                kmeans_losses.extend(len(model.loss_) * [loss])
-                accuracy = score(X, prototypes.astype('float32'), y)
-                list_acc_kmeans.append(accuracy)
+                model_km = KMeans(n_clusters=N, init='random', random_state=i).fit(X)
+                D = _squared_dist(tf.Variable(X), tf.Variable(model_km.cluster_centers_))
+                d_min = tf.math.reduce_min(D, axis=1)
+                loss = tf.norm(d_min).numpy()
+                kmeans_losses.extend(len(model_trans.loss_Q_) * [loss])
+                confmat = compute_confusion_matrix(model_km, X, y, N)
+                score = sum(np.diag(confmat)) / sum(sum(confmat))
+                acc_kmeans.append(score)
+                # plot_confusion_matrix(confmat, file_name=os.path.join(results_dir, f"{dataset}_f_{nf}_{i}_confmat_kmeans.pdf"), show=False)
 
-                steps.extend(np.arange(0, epochs))
+                steps.extend(np.arange(0, len(model_trans.loss_vals)))
                 ns_count.append(ns)
                 nf_count.append(nf)
                 ni_count.append(ni)
                 ds_name.append(f'S {ns} - I {ni}')
 
+            losses_Q = pd.DataFrame({
+                'epoch': steps,
+                'base': mlp_loss_Q,
+                'dual': trans_loss_Q,
+                'kmeans': kmeans_losses,
+            })
 
-            # losses_Q = pd.DataFrame({
-            #     'epoch': steps,
-            #     'base': base_loss_Q,
-            #     'dual': dual_loss_Q,
-            #     'deep-base': deep_base_loss_Q,
-            #     'deep-dual': deep_dual_loss_Q,
-            #     'kmeans': kmeans_losses,
-            # })
-            #
-            # sns.set_style('whitegrid')
-            # plt.figure(figsize=[4, 3])
-            # sns.lineplot('epoch', 'base', data=losses_Q, label='base', ci=99)
-            # sns.lineplot('epoch', 'dual', data=losses_Q, label='dual', ci=99)
-            # sns.lineplot('epoch', 'deep-base', data=losses_Q, label='deep-base', ci=99)
-            # sns.lineplot('epoch', 'deep-dual', data=losses_Q, label='deep-dual', ci=99)
-            # sns.lineplot('epoch', 'kmeans', data=losses_Q, label='kmeans', ci=99)
-            # # plt.yscale('log')
-            # plt.ylabel('Q')
-            # plt.title(f'{dataset}_f_{nf}')
-            # plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.3), ncol=2)
-            # plt.tight_layout()
-            # plt.savefig(os.path.join(results_dir, f'{dataset}_f_{nf}_loss_q.png'))
-            # plt.savefig(os.path.join(results_dir, f'{dataset}_f_{nf}_loss_q.pdf'))
-            # plt.show()
+            sns.set_style('whitegrid')
+            plt.figure(figsize=[4, 3])
+            sns.lineplot('epoch', 'base', data=losses_Q, label='base', ci=99)
+            sns.lineplot('epoch', 'dual', data=losses_Q, label='dual', ci=99)
+            sns.lineplot('epoch', 'kmeans', data=losses_Q, label='kmeans', ci=99)
+            # plt.yscale('log')
+            plt.ylabel('Q')
+            plt.title(f'{dataset}_f_{nf}')
+            plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.3), ncol=2)
+            plt.tight_layout()
+            plt.savefig(os.path.join(results_dir, f'{dataset}_f_{nf}_loss_q.png'))
+            plt.savefig(os.path.join(results_dir, f'{dataset}_f_{nf}_loss_q.pdf'))
+            plt.show()
 
-            # # Add accuracies of iterations for current dataset
-            # list_acc_base += acc_base
-            # list_acc_dual += acc_dual
-            # list_acc_kmeans += acc_kmeans
+            # Add accuracies of iterations for current dataset
+            list_acc_base += acc_base
+            list_acc_dual += acc_dual
+            list_acc_kmeans += acc_kmeans
 
         accuracies = pd.DataFrame({
             'number_sample': ns_count,
@@ -200,8 +221,6 @@ def main():
             'number_info_feature': ni_count,
             'base': list_acc_base,
             'dual': list_acc_dual,
-            'deep-base': list_acc_deep_base,
-            'deep-dual': list_acc_deep_dual,
             'kmeans': list_acc_kmeans,
         })
 
@@ -209,8 +228,6 @@ def main():
         plt.figure(figsize=[4, 3])
         sns.lineplot('number_feature', 'base', data=accuracies, label='base', ci=99)
         sns.lineplot('number_feature', 'dual', data=accuracies, label='dual', ci=99)
-        sns.lineplot('number_feature', 'deep-base', data=accuracies, label='deep-base', ci=99)
-        sns.lineplot('number_feature', 'deep-dual', data=accuracies, label='deep-dual', ci=99)
         sns.lineplot('number_feature', 'kmeans', data=accuracies, label='kmeans', ci=99)
         plt.xscale('log', basex=10)
         plt.ylabel('Accuracy')

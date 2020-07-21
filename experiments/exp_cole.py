@@ -66,9 +66,9 @@ def main():
     x_digits, y_digits = load_digits(return_X_y=True)
 
     datasets = {
-        # "Spiral": (X_spiral, y_spiral),
+        "Spiral": (X_spiral, y_spiral),
         # "digits": (x_digits, y_digits),
-        "mnist": (x_test[:5000], y_test[:5000]),
+        # "mnist": (x_test[:5000], y_test[:5000]),
         # "gabri": (X_gabri, y_gabri),
         # "noisy_circles": noisy_circles,
         # "noisy_moons": noisy_moons,
@@ -132,7 +132,7 @@ def main():
         n = X.shape[0]
         d = X.shape[1]
         latent_dim = 2
-        k = 100
+        k = 40
         lr = 0.008
         epochs = 800
         lbd = 0.01
@@ -145,14 +145,14 @@ def main():
         model.summary()
         model.fit(X, y, epochs=epochs)
         x_pred = model.predict(X)
-        prototypes = model.base_model.weights[0].numpy()
+        prototypes = model.base_model.weights[-1].numpy()
         G = compute_graph(x_pred, prototypes)
-        plt.figure()
-        plot_confusion_matrix(x_pred, prototypes, y)
-        plt.show()
         # plt.figure()
-        # scatterplot(x_pred, prototypes, y, valid=False)
+        # plot_confusion_matrix(x_pred, prototypes, y)
         # plt.show()
+        plt.figure()
+        scatterplot(x_pred, prototypes, y, valid=False)
+        plt.show()
 
         inputs = Input(shape=(d,), name='input')
         outputs = inputs
@@ -168,22 +168,22 @@ def main():
         x_pred = model.predict(X)
         prototypes = model.dual_model.predict(x_pred.T)
         G = compute_graph(x_pred, prototypes)
-        plt.figure()
-        plot_confusion_matrix(x_pred, prototypes, y)
-        plt.show()
         # plt.figure()
-        # scatterplot(x_pred, prototypes, y, valid=False)
+        # plot_confusion_matrix(x_pred, prototypes, y)
         # plt.show()
+        plt.figure()
+        scatterplot(x_pred, prototypes, y, valid=False)
+        plt.show()
 
         k1 = len(G.nodes)
         k_means = KMeans(n_clusters=k1)
         k_means.fit(x_pred)
-        plt.figure()
-        plot_confusion_matrix(x_pred, k_means.cluster_centers_.T, y)
-        plt.show()
         # plt.figure()
-        # scatterplot(x_pred, k_means.cluster_centers_.T, y, links=False)
+        # plot_confusion_matrix(x_pred, k_means.cluster_centers_.T, y)
         # plt.show()
+        plt.figure()
+        scatterplot(x_pred, k_means.cluster_centers_.T, y, links=False)
+        plt.show()
 
 
 if __name__ == "__main__":
