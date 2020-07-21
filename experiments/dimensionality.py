@@ -33,9 +33,10 @@ def main():
     experiments = {}
     # n_samples = [100, 1000]
     n_samples = [100]
-    n_informative = [1.0, 0.5]
+    # n_informative = [1.0, 0.5]
+    n_informative = [1.0]
     # n_features = [100, 300, 1000, 3000, 10000]  # 100000
-    n_features = [100, 300, 1000, 2000, 3000, 5000]  # 100000
+    n_features = [100, 300, 1000, 2000, 3000]  # 100000
     for ns in n_samples:
         # for nf in n_features:
             for ni in n_informative:
