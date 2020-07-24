@@ -207,6 +207,9 @@ def main():
             'kmeans': list_acc_kmeans,
         })
 
+        # Saving dataframe to disk in order to recover data if needed
+        accuracies.to_pickle(os.path.join(results_dir, f'dataframe_accuracy_#s-{ns}_%i-{ni*100}_#f-{n_features}.png'))
+
         sns.set_style('whitegrid')
         plt.figure(figsize=[4, 3])
         sns.lineplot('number_feature', 'base', data=accuracies, label='base', ci=99)
