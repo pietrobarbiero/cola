@@ -21,14 +21,14 @@ class DualModel(Model):
             output = layers.Dense(k_prototypes)(input)
         self.dual_model = tf.keras.Model(inputs=input, outputs=output)
 
-    def fit(self, X, y, epochs):
+    def fit(self, X, y, epochs, verbose=True):
         # Unpack the data. Its structure depends on your model and
         # on what you pass to `fit()`.
 
-        pbar = tqdm(range(epochs))
+        pbar = tqdm(range(epochs)) if verbose else None
         x = tf.Variable(X, dtype='float32')
         self.loss_ = []
-        for epoch in pbar:
+        for epoch in range(epochs):
             with tf.GradientTape() as tape:
                 y_latent = self(x, training=False)  # Forward pass
                 y_pred = self.dual_model(tf.transpose(y_latent), training=True)
@@ -42,6 +42,6 @@ class DualModel(Model):
             # Compute our own metrics
             loss_tracker.update_state(loss)
             self.loss_.append(loss.numpy())
-
-            pbar.set_description(f"Epoch: {epoch+1} - Loss: {loss.numpy():.2f}")
+            if verbose:
+                pbar.set_description(f"Epoch: {epoch+1} - Loss: {loss.numpy():.2f}")
         return self
