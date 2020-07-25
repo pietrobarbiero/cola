@@ -70,7 +70,8 @@ def main():
 			k = int(ns / 10)
 			# epochs = 300
 			epochs = 1000
-			lr_dual = 0.0008
+			# lr_dual = 0.0008
+			lr_dual = 1/ns
 			lr_base = 0.008
 			lmb_dual = 0  # 0.01
 			lmb_base = 0  # 0.01
