@@ -28,11 +28,11 @@ def main():
 
     experiments = {}
     # n_samples = [100, 1000]
-    n_samples = [1000]
+    n_samples = [100]
     # n_informative = [1.0, 0.5]
     n_informative = [1.0]
-    # n_features = [100, 300, 1000, 3000, 10000]  # 100000
-    n_features = [100, 300, 800]  # 100000
+    n_features = [100, 300, 1000, 3000, 10000]  # 100000
+    # n_features = [100, 300, 1000, 2000, 3000]  # 100000
     for ns in n_samples:
         # for nf in n_features:
             for ni in n_informative:
@@ -56,6 +56,7 @@ def main():
         ns, ni = data
         progress_bar_2 = tqdm(n_features, position=1)
         for nf in progress_bar_2:
+            progress_bar_2.set_description("Number of features: %s" % nf)
 
             # Xc = np.matmul(X, X.T)
             # V = np.linalg.eig(Xc)[1]
@@ -67,7 +68,6 @@ def main():
             # return
 
             ni2 = int(nf * ni)
-            # k = int(ns/10)
             k = int(ns/10)
             # epochs = 300
             epochs = 1000
@@ -89,6 +89,8 @@ def main():
             steps = []
             progress_bar_3 = tqdm(range(repetitions), position=1)
             for i in progress_bar_3:
+                progress_bar_3.set_description("Iteration: %d" % i)
+
                 X, y = make_classification(n_samples=ns, n_features=nf, class_sep=8,
                                            n_informative=ni2, n_redundant=0, hypercube=True,
                                            n_classes=2, n_clusters_per_class=1, random_state=i)
