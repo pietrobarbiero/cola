@@ -217,10 +217,10 @@ def main():
         })
 
         # Saving dataframe to disk in order to recover data if needed
-        accuracies.to_pickle(os.path.join(results_dir, f'dataframe_accuracy_#s-{ns}_%i-{ni*100}_#f-{n_features}.png'))
+        accuracies.to_pickle(os.path.join(results_dir, f'dataframe_accuracy_#s-{ns}_%i-{ni*100}_#f-{n_features}.pickle'))
 
         sns.set_style('whitegrid')
-        plt.figure(figsize=[4, 3])
+        plt.figure(figsize=[6, 4])
         sns.lineplot('number_feature', 'base', data=accuracies, label='base', ci=99)
         sns.lineplot('number_feature', 'dual', data=accuracies, label='dual', ci=99)
         # sns.lineplot('number_feature', 'deep-base', data=accuracies, label='deep-base', ci=99)
@@ -228,11 +228,11 @@ def main():
         sns.lineplot('number_feature', 'kmeans', data=accuracies, label='kmeans', ci=99)
         plt.xscale('log', basex=10)
         plt.ylabel('Accuracy')
-        plt.title(f'Accuracies on Blobs #s: {ns}, %i: {ni*100}')
-        plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.3), ncol=2)
+        plt.title(f'Accuracies on Blobs #s: {ns}, %i: {ni * 100}')
+        plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.2), ncol=4)
         plt.tight_layout()
-        plt.savefig(os.path.join(results_dir, f'accuracies_Blobs_#s-{ns}_%i-{ni*100}.png'))
-        plt.savefig(os.path.join(results_dir, f'accuracies_Blobs_#s-{ns}_%i-{ni*100}.pdf'))
+        plt.savefig(os.path.join(results_dir, f'accuracies_Blobs_#s-{ns}_%i-{ni * 100}.png'))
+        plt.savefig(os.path.join(results_dir, f'accuracies_Blobs_#s-{ns}_%i-{ni * 100}.pdf'))
         plt.show()
 
     # method = []
