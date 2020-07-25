@@ -54,9 +54,8 @@ def main():
     for j, (dataset, data) in enumerate(progress_bar):
         progress_bar.set_description("Analysis of dataset: %s" % dataset)
         ns, ni = data
-        progress_bar_2 = tqdm(n_features, position=1)
+        progress_bar_2 = tqdm(n_features, position=1, desc="Number of features")
         for nf in progress_bar_2:
-            progress_bar_2.set_description("Number of features: %s" % nf)
 
             # Xc = np.matmul(X, X.T)
             # V = np.linalg.eig(Xc)[1]
@@ -87,10 +86,8 @@ def main():
             dual_loss_Q = []
             deep_dual_loss_Q = []
             steps = []
-            progress_bar_3 = tqdm(range(repetitions), position=1)
+            progress_bar_3 = tqdm(range(repetitions), position=1, desc="Iterations")
             for i in progress_bar_3:
-                progress_bar_3.set_description("Iteration: %d" % i)
-
                 X, y = make_classification(n_samples=ns, n_features=nf, class_sep=8,
                                            n_informative=ni2, n_redundant=0, hypercube=True,
                                            n_classes=2, n_clusters_per_class=1, random_state=i)
