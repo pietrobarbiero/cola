@@ -108,8 +108,10 @@ def main():
                 x_pred = model.predict(X)
                 prototypes = model.base_model.weights[-1].numpy()
                 accuracy = score(X, prototypes, y)
+                print("Accuracy", accuracy, "\n")
                 list_acc_base.append(accuracy)
                 base_loss_Q.extend(model.loss_)
+
                 # # Deep base
                 # inputs = Input(shape=(nf,), name='input')
                 # model = BaseModel(n_features=nf, k_prototypes=k, inputs=inputs, outputs=inputs)
@@ -120,6 +122,7 @@ def main():
                 # x_pred = model.predict(X)
                 # prototypes = model.base_model.weights[-1].numpy()
                 # accuracy = score(X, prototypes, y)
+                # print("Accuracy", accuracy)
                 # list_acc_deep_base.append(accuracy)
                 # deep_base_loss_Q.extend(model.loss_)
 
@@ -133,6 +136,7 @@ def main():
                 x_pred = model.predict(X)
                 prototypes = model.dual_model.predict(x_pred.T)
                 accuracy = score(X, prototypes, y)
+                print("Accuracy", accuracy, "\n")
                 list_acc_dual.append(accuracy)
                 dual_loss_Q.extend(model.loss_)
 
@@ -146,6 +150,7 @@ def main():
                 x_pred = model.predict(X)
                 prototypes = model.dual_model.predict(x_pred.T)
                 accuracy = score(X, prototypes, y)
+                print("Accuracy", accuracy, "\n")
                 list_acc_deep_dual.append(accuracy)
                 deep_dual_loss_Q.extend(model.loss_)
 
@@ -157,6 +162,7 @@ def main():
                 loss = quantization(X, prototypes).numpy().astype('float32')
                 kmeans_losses.extend(len(model.loss_) * [loss])
                 accuracy = score(X, prototypes.astype('float32'), y)
+                print("Accuracy", accuracy)
                 list_acc_kmeans.append(accuracy)
 
                 steps.extend(np.arange(0, epochs))
@@ -168,30 +174,31 @@ def main():
                 # Clearing tf session to cancel previous models
                 tf.keras.backend.clear_session()
 
-            # losses_Q = pd.DataFrame({
-            #     'epoch': steps,
-            #     'base': base_loss_Q,
-            #     'dual': dual_loss_Q,
-            #     'deep-base': deep_base_loss_Q,
-            #     'deep-dual': deep_dual_loss_Q,
-            #     'kmeans': kmeans_losses,
-            # })
-            #
-            # sns.set_style('whitegrid')
-            # plt.figure(figsize=[4, 3])
-            # sns.lineplot('epoch', 'base', data=losses_Q, label='base', ci=99)
-            # sns.lineplot('epoch', 'dual', data=losses_Q, label='dual', ci=99)
+            losses_Q = pd.DataFrame({
+                'epoch': steps,
+                'base': base_loss_Q,
+                'dual': dual_loss_Q,
+                # 'deep-base': deep_base_loss_Q,
+                'deep-dual': deep_dual_loss_Q,
+                'kmeans': kmeans_losses,
+            })
+
+            sns.set_style('whitegrid')
+            plt.figure(figsize=[4, 3])
+            sns.lineplot('epoch', 'base', data=losses_Q, label='base', ci=99)
+            sns.lineplot('epoch', 'dual', data=losses_Q, label='dual', ci=99)
             # sns.lineplot('epoch', 'deep-base', data=losses_Q, label='deep-base', ci=99)
-            # sns.lineplot('epoch', 'deep-dual', data=losses_Q, label='deep-dual', ci=99)
-            # sns.lineplot('epoch', 'kmeans', data=losses_Q, label='kmeans', ci=99)
-            # # plt.yscale('log')
-            # plt.ylabel('Q')
-            # plt.title(f'{dataset}_f_{nf}')
-            # plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.3), ncol=2)
-            # plt.tight_layout()
-            # plt.savefig(os.path.join(results_dir, f'{dataset}_f_{nf}_loss_q.png'))
-            # plt.savefig(os.path.join(results_dir, f'{dataset}_f_{nf}_loss_q.pdf'))
-            # plt.show()
+            sns.lineplot('epoch', 'deep-dual', data=losses_Q, label='deep-dual', ci=99)
+            sns.lineplot('epoch', 'kmeans', data=losses_Q, label='kmeans', ci=99)
+            plt.yscale('log', basey=10)
+            plt.ylabel('Q')
+            plt.title(f'{dataset}_f_{nf}')
+            plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.3), ncol=2)
+            plt.tight_layout()
+
+            plt.savefig(os.path.join(results_dir, f'{dataset}_f_{nf}_loss_q.png'))
+            plt.savefig(os.path.join(results_dir, f'{dataset}_f_{nf}_loss_q.pdf'))
+            plt.show()
 
             # # Add accuracies of iterations for current dataset
             # list_acc_base += acc_base
