@@ -150,8 +150,8 @@ def main():
                 deep_dual_loss_Q.extend(model.loss_)
 
                 # k-Means
-                G = compute_graph(x_pred, prototypes)
-                k1 = len(G.nodes)
+                _, has_samples = compute_graph(x_pred, prototypes, return_has_sampels=True)
+                k1 = np.sum(has_samples)
                 model_km = KMeans(n_clusters=k1, init='random', random_state=i).fit(X)
                 prototypes = model_km.cluster_centers_.T
                 loss = quantization(X, prototypes).numpy().astype('float32')

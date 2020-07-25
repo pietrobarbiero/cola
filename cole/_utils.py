@@ -42,9 +42,10 @@ def score(X, P, y):
     return accuracy
 
 
-def compute_graph(X, P):
+def compute_graph(X, P, return_has_sampels=False):
     has_samples = []
-    N = X.shape[0]
+    # N = X.shape[0]
+    N = P.shape[1]
     adjacency_matrix = np.zeros((N, N))
     input_matrix = tf.Variable(X, dtype='float32')
     D = squared_dist(input_matrix, tf.transpose(P))
@@ -68,7 +69,10 @@ def compute_graph(X, P):
             if adjacency_matrix[i, j] > 0 and has_samples[i] and has_samples[j]:
                 we.append((i, j, adjacency_matrix[i, j]))
     G.add_weighted_edges_from(we)
-    return G
+    if return_has_sampels:
+        return G, has_samples
+    else:
+        return G
 
 
 def scatterplot(X, prototypes, y, valid=True, links=True):
