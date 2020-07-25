@@ -165,6 +165,8 @@ def main():
                 ni_count.append(ni)
                 ds_name.append(f'S {ns} - I {ni}')
 
+                # Clearing tf session to cancel previous models
+                tf.keras.backend.clear_session()
 
             # losses_Q = pd.DataFrame({
             #     'epoch': steps,
