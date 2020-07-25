@@ -1,22 +1,18 @@
-import collections
-import gc
 import sys
-import os
-
-from sklearn import clone, datasets
-from sklearn.cluster import k_means, KMeans
-from sklearn.datasets import make_circles, make_moons, make_blobs, make_classification, load_digits
-from sklearn.decomposition import PCA
-from sklearn.preprocessing import StandardScaler
-from tqdm import tqdm
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
-import time
 import logging
+import os
+import sys
+
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import seaborn as sns
 import tensorflow as tf
+from sklearn.cluster import KMeans
+from sklearn.datasets import make_classification
+from sklearn.preprocessing import StandardScaler
 from tensorflow.keras import Input
+from tqdm import tqdm
 
 from cole import BaseModel, DualModel, quantization
 from cole._utils import score, compute_graph
