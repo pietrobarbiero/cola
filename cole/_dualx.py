@@ -2,13 +2,13 @@ import tensorflow as tf
 from tensorflow.keras import layers, Model, metrics
 from tqdm import tqdm
 
-from ._loss import quantization, silhouette, convex_hull_loss
+from ._loss import quantization, silhouette
 
 mae_metric = metrics.MeanAbsoluteError(name="mae")
 loss_tracker = metrics.Mean(name="loss")
 
 
-class DualModel(Model):
+class DualXModel(Model):
 
     def __init__(self, n_samples, k_prototypes, deep=True, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -18,7 +18,8 @@ class DualModel(Model):
             x = layers.Dense(k_prototypes, activation='tanh')(x)
             output = layers.Dense(k_prototypes)(x)
         else:
-            output = layers.Dense(k_prototypes)(input)
+            x = layers.BatchNormalization()(input)
+            output = layers.Dense(k_prototypes, use_bias=False)(x)
         self.dual_model = tf.keras.Model(inputs=input, outputs=output)
 
     def fit(self, X, y, epochs, verbose=True):
@@ -30,9 +31,8 @@ class DualModel(Model):
         self.loss_ = []
         for epoch in range(epochs):
             with tf.GradientTape() as tape:
-                y_latent = self(x, training=False)  # Forward pass
-                y_pred = self.dual_model(tf.transpose(y_latent), training=True)
-                loss = convex_hull_loss(y_latent, y_pred)
+                output = tf.reduce_min(self.dual_model.weights[-1], axis=1)
+                loss = tf.norm(output)
 
             # Compute gradients
             trainable_vars = self.trainable_variables
