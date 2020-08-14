@@ -27,6 +27,38 @@ def quantization(input, output):
     return Q
 
 
+def convex_hull_loss(input, output):
+    Z = squared_dist(input, tf.transpose(output))
+    Z2 = tf.divide(1, Z)
+    # Z = tf.sqrt(squared_dist(input, tf.transpose(output)))
+    v = tf.reduce_sum(Z2, axis=1)
+    v2 = tf.reshape(tf.tile(v, [Z2.shape[1]]), [Z2.shape[1], v.shape[0]])
+    v2 = tf.transpose(v2)
+    Zh = tf.divide(Z2, v2)
+    P = tf.transpose(Zh)
+
+    A = tf.reduce_max(P, axis=0)
+    mask = tf.logical_not(tf.less(P, A))
+    Ph = tf.multiply(P, tf.cast(mask, P.dtype))
+    Ph = tf.math.divide_no_nan(Ph, Ph)
+
+    K = tf.matmul(output, Ph)
+    Q = tf.norm(input - tf.transpose(K)) # + 0.001 * tf.norm(Z)
+
+    # import matplotlib.pyplot as plt
+    # y = output.numpy().T
+    # z = K.numpy()[:, 0]
+    # x = input.numpy()[0, :]
+    # plt.figure()
+    # plt.scatter(x[0], x[1], label='x')
+    # plt.scatter(y[:, 0], y[:, 1], label='y')
+    # plt.scatter(z[0], z[1], label='yh')
+    # plt.legend()
+    # plt.show()
+
+    return Q
+
+
 def quantization_topology(input, output, lmb):
     N = input.shape[0]
     adjacency_matrix = np.zeros((N, N))

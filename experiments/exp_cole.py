@@ -19,7 +19,8 @@ import tensorflow as tf
 from tensorflow.keras import Input
 from tensorflow.keras.models import Model
 
-from cole import DualModel, quantization, plot_confusion_matrix, scatterplot, compute_graph, BaseModel
+from cole import DualModel, quantization, plot_confusion_matrix, \
+    scatterplot, compute_graph, BaseModel
 
 
 def main():
@@ -31,7 +32,7 @@ def main():
     noisy_circles = make_circles(n_samples=n_samples, factor=.5,
                                  noise=.05)
     noisy_moons = make_moons(n_samples=n_samples, noise=.05)
-    blobs = make_blobs(n_samples=n_samples, random_state=8)
+    blobs = make_blobs(n_samples=n_samples, centers=3, random_state=8)
     no_structure = np.random.rand(n_samples, 2), None
     random_state = 170
     X, y = make_blobs(n_samples=n_samples, random_state=random_state)
@@ -132,27 +133,28 @@ def main():
         n = X.shape[0]
         d = X.shape[1]
         latent_dim = 2
-        k = 40
+        k = 20
         lr = 0.008
         epochs = 800
         lbd = 0.01
 
-        inputs = Input(shape=(d,), name='input')
-        outputs = inputs
-        model = BaseModel(n_features=d, k_prototypes=k, inputs=inputs, outputs=outputs)
-        optimizer = tf.keras.optimizers.Adam(learning_rate=0.008)
-        model.compile(optimizer=optimizer)
-        model.summary()
-        model.fit(X, y, epochs=epochs)
-        x_pred = model.predict(X)
-        prototypes = model.base_model.weights[-1].numpy()
-        G = compute_graph(x_pred, prototypes)
+        # inputs = Input(shape=(d,), name='input')
+        # outputs = inputs
+        # model = BaseModel(n_features=d, k_prototypes=k, inputs=inputs, outputs=outputs, deep=False)
+        # optimizer = tf.keras.optimizers.Adam(learning_rate=0.008)
+        # model.compile(optimizer=optimizer)
+        # model.summary()
+        # model.fit(X, y, epochs=epochs, verbose=True)
+        # x_pred = model.predict(X)
+        # prototypes = model.base_model.weights[-1].numpy()
+        # # G = compute_graph(x_pred, prototypes)
+        # # plt.figure()
+        # # plot_confusion_matrix(x_pred, prototypes, y)
+        # # plt.show()
         # plt.figure()
-        # plot_confusion_matrix(x_pred, prototypes, y)
+        # scatterplot(x_pred, prototypes, y, valid=False)
+        # plt.savefig(os.path.join(results_dir, dataset + ".png"))
         # plt.show()
-        plt.figure()
-        scatterplot(x_pred, prototypes, y, valid=False)
-        plt.show()
 
         inputs = Input(shape=(d,), name='input')
         outputs = inputs
@@ -160,7 +162,7 @@ def main():
         # outputs = Dense(256)(x)
         # x = Dense(128)(x)
         # outputs = Dense(64)(x)
-        model = DualModel(n_samples=n, k_prototypes=k, inputs=inputs, outputs=outputs)
+        model = DualModel(n_samples=n, k_prototypes=k, inputs=inputs, outputs=outputs, deep=False)
         optimizer = tf.keras.optimizers.Adam(learning_rate=lr)
         model.compile(optimizer=optimizer)
         model.summary()
@@ -172,18 +174,18 @@ def main():
         # plot_confusion_matrix(x_pred, prototypes, y)
         # plt.show()
         plt.figure()
-        scatterplot(x_pred, prototypes, y, valid=False)
+        scatterplot(x_pred, prototypes, y, valid=True)
         plt.show()
 
-        k1 = len(G.nodes)
-        k_means = KMeans(n_clusters=k1)
-        k_means.fit(x_pred)
+        # k1 = len(G.nodes)
+        # k_means = KMeans(n_clusters=k1)
+        # k_means.fit(x_pred)
+        # # plt.figure()
+        # # plot_confusion_matrix(x_pred, k_means.cluster_centers_.T, y)
+        # # plt.show()
         # plt.figure()
-        # plot_confusion_matrix(x_pred, k_means.cluster_centers_.T, y)
+        # scatterplot(x_pred, k_means.cluster_centers_.T, y, links=False)
         # plt.show()
-        plt.figure()
-        scatterplot(x_pred, k_means.cluster_centers_.T, y, links=False)
-        plt.show()
 
 
 if __name__ == "__main__":

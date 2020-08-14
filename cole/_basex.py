@@ -2,26 +2,27 @@ import tensorflow as tf
 from tensorflow.keras import layers, Model, metrics
 from tqdm import tqdm
 
-from ._loss import quantization, silhouette, convex_hull_loss
+from ._loss import quantization
 
 mae_metric = metrics.MeanAbsoluteError(name="mae")
 loss_tracker = metrics.Mean(name="loss")
 
 
-class DualModel(Model):
+class BaseXModel(Model):
 
-    def __init__(self, n_samples, k_prototypes, deep=True, *args, **kwargs):
+    def __init__(self, n_features, k_prototypes, deep=True, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        input = layers.Input(shape=(n_samples,))
+        input = layers.Input(shape=(n_features,))
         if deep:
-            x = layers.Dense(k_prototypes, activation='tanh')(input)
-            x = layers.Dense(k_prototypes, activation='tanh')(x)
-            output = layers.Dense(k_prototypes)(x)
+            x = layers.Dense(n_features, activation='tanh')(input)
+            x = layers.Dense(n_features, activation='tanh')(x)
+            # output = layers.Softmax(k_prototypes, use_bias=False)(x)
+            output = layers.Dense(k_prototypes, use_bias=False)(x)
         else:
-            output = layers.Dense(k_prototypes)(input)
-        self.dual_model = tf.keras.Model(inputs=input, outputs=output)
+            output = layers.Dense(k_prototypes, activation='relu', use_bias=False)(input)
+        self.base_model = tf.keras.Model(inputs=input, outputs=output)
 
-    def fit(self, X, y, epochs, verbose=True):
+    def fit(self, X, y, epochs, verbose=False):
         # Unpack the data. Its structure depends on your model and
         # on what you pass to `fit()`.
 
@@ -30,9 +31,12 @@ class DualModel(Model):
         self.loss_ = []
         for epoch in range(epochs):
             with tf.GradientTape() as tape:
-                y_latent = self(x, training=False)  # Forward pass
-                y_pred = self.dual_model(tf.transpose(y_latent), training=True)
-                loss = convex_hull_loss(y_latent, y_pred)
+                y_latent = self(x, training=True)  # Forward pass
+                y_pred = self.base_model(y_latent, training=True)
+                softm = tf.math.softmax(y_pred)
+                maxd = tf.math.reduce_max(softm, axis=1)
+                cost = tf.math.log(1/maxd) * maxd
+                loss = tf.reduce_sum(cost)
 
             # Compute gradients
             trainable_vars = self.trainable_variables
@@ -42,6 +46,7 @@ class DualModel(Model):
             # Compute our own metrics
             loss_tracker.update_state(loss)
             self.loss_.append(loss.numpy())
+
             if verbose:
                 pbar.set_description(f"Epoch: {epoch+1} - Loss: {loss.numpy():.2f}")
         return self
