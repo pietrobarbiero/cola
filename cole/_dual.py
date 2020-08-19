@@ -1,3 +1,5 @@
+import math
+
 import tensorflow as tf
 from tensorflow.keras import layers, Model, metrics
 from tqdm import tqdm
@@ -28,12 +30,14 @@ class DualModel(Model):
         pbar = tqdm(range(epochs)) if verbose else None
         x = tf.Variable(X, dtype='float32')
         self.loss_ = []
-        for epoch in range(epochs):
+        for epoch in pbar:
             with tf.GradientTape() as tape:
                 y_latent = self(x, training=False)  # Forward pass
                 y_pred = self.dual_model(tf.transpose(y_latent), training=True)
                 # loss = quantization_fast(y_latent, y_pred, y, self.dual_model.weights[0], epoch)
                 loss = quantization(y_latent, y_pred)
+                if math.isnan(loss):
+                    raise ArithmeticError(f"Loss is {loss}")
 
             # Compute gradients
             trainable_vars = self.trainable_variables

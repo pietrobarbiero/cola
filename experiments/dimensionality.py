@@ -19,7 +19,7 @@ from cole._utils import score, compute_graph
 
 
 def main():
-    results_dir = "./dimensionality6"
+    results_dir = "./last_experiments"
     if not os.path.exists(results_dir):
         os.makedirs(results_dir)
 
@@ -31,7 +31,7 @@ def main():
     n_samples = [100]
     # n_informative = [1.0, 0.5]
     n_informative = [1.0]
-    n_features = [100, 300, 1000, 3000, 10000]  # 100000
+    n_features = [10000]  # 100000
     # n_features = [100, 300, 1000, 2000, 3000]  # 100000
     for ns in n_samples:
         # for nf in n_features:
@@ -69,13 +69,13 @@ def main():
             ni2 = int(nf * ni)
             k = int(ns/10)
             # epochs = 300
-            epochs = 1000
+            epochs = 2000
             lr_dual = 0.008
             lr_base = 0.008
             lmb_dual = 0  # 0.01
             lmb_base = 0  # 0.01
             # repetitions = 10
-            repetitions = 10
+            repetitions = 5
 
             acc_base = []
             acc_dual = []
@@ -99,13 +99,14 @@ def main():
                 optimizer = tf.keras.optimizers.Adam(learning_rate=lr_base)
                 model.compile(optimizer=optimizer)
                 model.layers[1].summary()
-                model.fit(X, y, epochs=epochs, verbose=False)
+                model.fit(X, y, epochs=epochs, verbose=True)
                 x_pred = model.predict(X)
                 prototypes = model.base_model.weights[-1].numpy()
                 accuracy = score(X, prototypes, y)
                 print("Accuracy", accuracy, "\n")
                 list_acc_base.append(accuracy)
                 base_loss_Q.extend(model.loss_)
+                print("Accuracy", accuracy, "\n")
 
                 # # Deep base
                 # inputs = Input(shape=(nf,), name='input')
@@ -127,7 +128,7 @@ def main():
                 optimizer = tf.keras.optimizers.Adam(learning_rate=lr_dual)
                 model.compile(optimizer=optimizer)
                 model.layers[1].summary()
-                model.fit(X, y, epochs=epochs, verbose=False)
+                model.fit(X, y, epochs=epochs, verbose=True)
                 x_pred = model.predict(X)
                 prototypes = model.dual_model.predict(x_pred.T)
                 accuracy = score(X, prototypes, y)
@@ -141,7 +142,7 @@ def main():
                 optimizer = tf.keras.optimizers.Adam(learning_rate=lr_dual)
                 model.compile(optimizer=optimizer)
                 model.layers[1].summary()
-                model.fit(X, y, epochs=epochs, verbose=False)
+                model.fit(X, y, epochs=epochs, verbose=True)
                 x_pred = model.predict(X)
                 prototypes = model.dual_model.predict(x_pred.T)
                 accuracy = score(X, prototypes, y)
@@ -186,6 +187,7 @@ def main():
             sns.lineplot('epoch', 'deep-dual', data=losses_Q, label='deep-dual', ci=99)
             sns.lineplot('epoch', 'kmeans', data=losses_Q, label='kmeans', ci=99)
             plt.yscale('log', basey=10)
+            plt.ylim(bottom=0, top=10000)
             plt.ylabel('Q')
             plt.title(f'{dataset}_f_{nf}')
             plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.2), ncol=4)
