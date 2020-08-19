@@ -30,7 +30,7 @@ def main():
 	n_features = [100]
 	# n_informative = [1.0, 0.5]
 	n_informative = [1.0]
-	n_samples = [3000, 10000]  # 100000
+	n_samples = [100, 300, 1000, 3000, 10000]  # 100000
 	# n_features = [100, 300, 1000, 2000, 3000]  # 100000
 	#    for ns in n_samples:
 	for nf in n_features:
@@ -214,19 +214,21 @@ def main():
 		accuracies.to_pickle(os.path.join(results_dir, f'dataframe_accuracy_#s-{n_samples}_%i-{ni * 100}_#f-{nf}.pickle'))
 
 		sns.set_style('whitegrid')
+		plt.rc('font', size=12)
 		plt.figure(figsize=[6, 4])
-		sns.lineplot('number_sample', 'base', data=accuracies, label='base', ci=99)
-		sns.lineplot('number_sample', 'dual', data=accuracies, label='dual', ci=99)
+		sns.lineplot('number_sample', 'base', data=accuracies, label='GBC', ci=99)
+		sns.lineplot('number_sample', 'dual', data=accuracies, label='DGBC', ci=99)
 		# sns.lineplot('number_sample', 'deep-base', data=accuracies, label='deep-base', ci=99)
-		sns.lineplot('number_sample', 'deep-dual', data=accuracies, label='deep-dual', ci=99)
-		sns.lineplot('number_sample', 'kmeans', data=accuracies, label='kmeans', ci=99)
+		sns.lineplot('number_sample', 'deep-dual', data=accuracies, label='Deep-DGBC', ci=99)
+		sns.lineplot('number_sample', 'kmeans', data=accuracies, label='k-Means', ci=99)
 		plt.xscale('log', basex=10)
+		plt.ylim((0.9, 1.05))
 		plt.ylabel('Accuracy')
-		plt.title(f'Accuracies on Blobs #f: {nf}, %i: {ni * 100}')
-		plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.2), ncol=4)
+		plt.title(f'Accuracies on Blobs, #features: {nf}')
+		plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.25), ncol=4)
 		plt.tight_layout()
-		plt.savefig(os.path.join(results_dir, f'accuracies_Blobs_#f-{nf}_%i-{ni * 100}.png'))
-		plt.savefig(os.path.join(results_dir, f'accuracies_Blobs_#f-{nf}_%i-{ni * 100}.pdf'))
+		plt.savefig(os.path.join(results_dir, f'accuracies_Blobs_#s-{n_samples}_%i-{ni * 100}_#f-{nf}.png'))
+		plt.savefig(os.path.join(results_dir, f'accuracies_Blobs_#s-{n_samples}_%i-{ni * 100}_#f-{nf}.pdf'))
 		plt.show()
 
 	# method = []
