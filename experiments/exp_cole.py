@@ -28,7 +28,7 @@ def main():
     if not os.path.exists(results_dir):
         os.makedirs(results_dir)
 
-    n_samples = 500
+    n_samples = 30
     noisy_circles = make_circles(n_samples=n_samples, factor=.5,
                                  noise=.05)
     noisy_moons = make_moons(n_samples=n_samples, noise=.05)
@@ -67,13 +67,13 @@ def main():
     x_digits, y_digits = load_digits(return_X_y=True)
 
     datasets = {
-        "Spiral": (X_spiral, y_spiral),
+        # "Spiral": (X_spiral, y_spiral),
         # "digits": (x_digits, y_digits),
         # "mnist": (x_test[:5000], y_test[:5000]),
         # "gabri": (X_gabri, y_gabri),
         # "noisy_circles": noisy_circles,
         # "noisy_moons": noisy_moons,
-        # "blobs": blobs,
+        "blobs": blobs,
         # "aniso": aniso,
         # "varied": varied,
     }
@@ -133,9 +133,9 @@ def main():
         n = X.shape[0]
         d = X.shape[1]
         latent_dim = 2
-        k = 20
+        k = 3
         lr = 0.008
-        epochs = 800
+        epochs = 300
         lbd = 0.01
 
         # inputs = Input(shape=(d,), name='input')

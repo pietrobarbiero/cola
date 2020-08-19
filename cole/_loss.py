@@ -27,7 +27,80 @@ def quantization(input, output):
     return Q
 
 
+def quantization_fast(input, output, y, O, epoch):
+    # TODO:
+    # Q = norm(X[i] - output[j]) * O[i,j]
+    D = squared_dist(input, tf.transpose(output))
+    D2 = tf.multiply(D, O)
+    # togliere il bias
+    Q = tf.norm(D2)
+
+    # classic
+    # mettere a zero tutto ciò che non è nel voronoi
+    # togliere il bias
+    # D = squared_dist(input, tf.transpose(output))
+    # d_min = tf.math.reduce_min(D, axis=1)
+    # Q = tf.norm(d_min)
+
+    import matplotlib.pyplot as plt
+    import seaborn as sns
+    if (epoch % 100) == 0:
+    # if True:
+        # plt.figure()
+        # plt.subplot(121)
+        # sns.heatmap(O.numpy())
+        # plt.subplot(122)
+        # sns.heatmap(y.reshape(-1,1))
+        # plt.title(f'Epoch: {epoch} - Bias: {tf.norm(b).numpy():.4f}')
+        # plt.show()
+
+        plt.figure(figsize=[8,3])
+        for i in range(O.numpy().shape[1]):
+            wi = O.numpy()[:, i]
+            plt.subplot(1, O.numpy().shape[1], i+1)
+            plt.scatter(input.numpy()[:, 0], input.numpy()[:, 1], c='k', alpha=0.2)
+            plt.scatter(input.numpy()[wi>0, 0], input.numpy()[wi>0, 1], c='g')
+            plt.scatter(input.numpy()[wi<=0, 0], input.numpy()[wi<=0, 1], c='r')
+            plt.scatter(output[0, 0], output[1, 0], c='k', s=200, alpha=0.2)
+            plt.scatter(output[0, 1], output[1, 1], c='k', s=200, alpha=0.2)
+            plt.scatter(output[0, 2], output[1, 2], c='k', s=200, alpha=0.2)
+            plt.scatter(output[0, i], output[1, i], c='k', s=200)
+            plt.title(f'No Voronoi - epoch {epoch}')
+            # plt.title(f'Voronoi - epoch {epoch}')
+        plt.savefig(f'novoronoi_{epoch}.png')
+        # plt.savefig(f'voronoi_{epoch}.png')
+        plt.show()
+
+        # plt.figure()
+        # plt.scatter(input.numpy()[y==0, 0], input.numpy()[y==0, 1], c='r', alpha=0.5)
+        # plt.scatter(input.numpy()[y==1, 0], input.numpy()[y==1, 1], c='g', alpha=0.5)
+        # plt.scatter(input.numpy()[y==2, 0], input.numpy()[y==2, 1], c='b', alpha=0.5)
+        # plt.scatter(output[0, 0], output[1, 0], c='r', s=200)
+        # plt.scatter(output[0, 1], output[1, 1], c='g', s=200)
+        # plt.scatter(output[0, 2], output[1, 2], c='b', s=200)
+        # plt.show()
+
+        # t1 = np.arange(sum(y==0))
+        # t2 = np.arange(sum(y==1))
+        # t3 = np.arange(sum(y==2))
+        # plt.figure()
+        # plt.plot(t1, O.numpy()[y==0, 0], c='r')
+        # plt.plot(t2, O.numpy()[y==1, 0], c='g')
+        # plt.plot(t3, O.numpy()[y==2, 0], c='b')
+        # plt.show()
+        # plt.figure()
+        # plt.plot(t1, O.numpy()[y==1, 0], c='r')
+        # plt.plot(t1, O.numpy()[y==1, 1], c='g')
+        # plt.plot(t1, O.numpy()[y==1, 2], c='b')
+        # plt.show()
+    #
+    #     print()
+
+    return Q
+
+
 def convex_hull_loss(input, output):
+    # TODO: try again without bias
     Z = squared_dist(input, tf.transpose(output))
     Z2 = tf.divide(1, Z)
     # Z = tf.sqrt(squared_dist(input, tf.transpose(output)))
@@ -35,15 +108,15 @@ def convex_hull_loss(input, output):
     v2 = tf.reshape(tf.tile(v, [Z2.shape[1]]), [Z2.shape[1], v.shape[0]])
     v2 = tf.transpose(v2)
     Zh = tf.divide(Z2, v2)
-    P = tf.transpose(Zh)
+    Ph = tf.transpose(Zh)
 
-    A = tf.reduce_max(P, axis=0)
-    mask = tf.logical_not(tf.less(P, A))
-    Ph = tf.multiply(P, tf.cast(mask, P.dtype))
-    Ph = tf.math.divide_no_nan(Ph, Ph)
+    # A = tf.reduce_max(P, axis=0)
+    # mask = tf.logical_not(tf.less(P, A))
+    # Ph = tf.multiply(P, tf.cast(mask, P.dtype))
+    # Ph = tf.math.divide_no_nan(Ph, Ph)
 
     K = tf.matmul(output, Ph)
-    Q = tf.norm(input - tf.transpose(K)) # + 0.001 * tf.norm(Z)
+    Q = tf.norm(input - tf.transpose(K)) + 0.001 * tf.norm(Z)
 
     # import matplotlib.pyplot as plt
     # y = output.numpy().T

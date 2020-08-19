@@ -2,7 +2,7 @@ import tensorflow as tf
 from tensorflow.keras import layers, Model, metrics
 from tqdm import tqdm
 
-from ._loss import quantization, silhouette, convex_hull_loss
+from ._loss import quantization, silhouette, convex_hull_loss, quantization_fast
 
 mae_metric = metrics.MeanAbsoluteError(name="mae")
 loss_tracker = metrics.Mean(name="loss")
@@ -32,7 +32,8 @@ class DualModel(Model):
             with tf.GradientTape() as tape:
                 y_latent = self(x, training=False)  # Forward pass
                 y_pred = self.dual_model(tf.transpose(y_latent), training=True)
-                loss = convex_hull_loss(y_latent, y_pred)
+                # loss = quantization_fast(y_latent, y_pred, y, self.dual_model.weights[0], epoch)
+                loss = quantization(y_latent, y_pred)
 
             # Compute gradients
             trainable_vars = self.trainable_variables
