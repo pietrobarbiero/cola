@@ -1,3 +1,4 @@
+import random
 import sys
 import logging
 import os
@@ -19,7 +20,7 @@ from cole._utils import score, compute_graph
 
 
 def main():
-    results_dir = "./last_experiments"
+    results_dir = "./last_experiments-10"
     if not os.path.exists(results_dir):
         os.makedirs(results_dir)
 
@@ -31,7 +32,7 @@ def main():
     n_samples = [100]
     # n_informative = [1.0, 0.5]
     n_informative = [1.0]
-    n_features = [10000]  # 100000
+    n_features = [1000, 2000, 3000, 5000, 10000]  # 100000
     # n_features = [100, 300, 1000, 2000, 3000]  # 100000
     for ns in n_samples:
         # for nf in n_features:
@@ -70,8 +71,9 @@ def main():
             k = int(ns/10)
             # epochs = 300
             epochs = 2000
-            lr_dual = 0.008
-            lr_base = 0.008
+            lr_base = 0.002
+            lr_dual = 0.001
+            lr_deep_dual = 0.002
             lmb_dual = 0  # 0.01
             lmb_base = 0  # 0.01
             # repetitions = 10
@@ -88,25 +90,29 @@ def main():
             steps = []
             progress_bar_3 = tqdm(range(repetitions), position=1, desc="Iterations")
             for i in progress_bar_3:
-                X, y = make_classification(n_samples=ns, n_features=nf, class_sep=8,
+                random.seed = i
+                np.random.seed(i)
+                tf.random.set_seed(i)
+                X, y = make_classification(n_samples=ns, n_features=nf, class_sep=10,
                                            n_informative=ni2, n_redundant=0, hypercube=True,
                                            n_classes=2, n_clusters_per_class=1, random_state=i)
                 X = StandardScaler().fit_transform(X)
 
                 # Base
+                print("\n\nBase Model")
                 inputs = Input(shape=(nf,), name='input')
                 model = BaseModel(n_features=nf, k_prototypes=k, deep=False, inputs=inputs, outputs=inputs)
                 optimizer = tf.keras.optimizers.Adam(learning_rate=lr_base)
                 model.compile(optimizer=optimizer)
-                model.layers[1].summary()
-                model.fit(X, y, epochs=epochs, verbose=True)
+                # model.layers[1].summary()
+                model.fit(X, y, epochs=epochs, verbose=False)
                 x_pred = model.predict(X)
                 prototypes = model.base_model.weights[-1].numpy()
                 accuracy = score(X, prototypes, y)
-                print("Accuracy", accuracy, "\n")
+                print("Accuracy", accuracy)
                 list_acc_base.append(accuracy)
                 base_loss_Q.extend(model.loss_)
-                print("Accuracy", accuracy, "\n")
+                print("Loss", model.loss_[-1], "\n")
 
                 # # Deep base
                 # inputs = Input(shape=(nf,), name='input')
@@ -123,34 +129,40 @@ def main():
                 # deep_base_loss_Q.extend(model.loss_)
 
                 # Dual
+                print("Dual Model")
                 inputs = Input(shape=(nf,), name='input')
                 model = DualModel(n_samples=ns, k_prototypes=k, deep=False, inputs=inputs, outputs=inputs)
                 optimizer = tf.keras.optimizers.Adam(learning_rate=lr_dual)
                 model.compile(optimizer=optimizer)
-                model.layers[1].summary()
-                model.fit(X, y, epochs=epochs, verbose=True)
+                # model.layers[1].summary()
+                model.fit(X, y, epochs=epochs, verbose=False)
                 x_pred = model.predict(X)
                 prototypes = model.dual_model.predict(x_pred.T)
                 accuracy = score(X, prototypes, y)
-                print("Accuracy", accuracy, "\n")
+                print("Accuracy", accuracy)
                 list_acc_dual.append(accuracy)
                 dual_loss_Q.extend(model.loss_)
+                print("Loss", model.loss_[-1], "\n")
+
 
                 # Deep dual
+                print("Deep Dual Model")
                 inputs = Input(shape=(nf,), name='input')
                 model = DualModel(n_samples=ns, k_prototypes=k, deep=True, inputs=inputs, outputs=inputs)
-                optimizer = tf.keras.optimizers.Adam(learning_rate=lr_dual)
+                optimizer = tf.keras.optimizers.Adam(learning_rate=lr_deep_dual)
                 model.compile(optimizer=optimizer)
-                model.layers[1].summary()
-                model.fit(X, y, epochs=epochs, verbose=True)
+                # model.layers[1].summary()
+                model.fit(X, y, epochs=epochs, verbose=False)
                 x_pred = model.predict(X)
                 prototypes = model.dual_model.predict(x_pred.T)
                 accuracy = score(X, prototypes, y)
-                print("Accuracy", accuracy, "\n")
+                print("Accuracy", accuracy)
                 list_acc_deep_dual.append(accuracy)
                 deep_dual_loss_Q.extend(model.loss_)
+                print("Loss", model.loss_[-1], "\n")
 
                 # k-Means
+                print("k-Means")
                 _, has_samples = compute_graph(x_pred, prototypes, return_has_sampels=True)
                 k1 = np.sum(has_samples)
                 model_km = KMeans(n_clusters=k1, init='random', random_state=i).fit(X)
@@ -160,6 +172,8 @@ def main():
                 accuracy = score(X, prototypes.astype('float32'), y)
                 print("Accuracy", accuracy)
                 list_acc_kmeans.append(accuracy)
+                print("Loss", loss, "\n")
+
 
                 steps.extend(np.arange(0, epochs))
                 ns_count.append(ns)
@@ -178,6 +192,8 @@ def main():
                 'deep-dual': deep_dual_loss_Q,
                 'kmeans': kmeans_losses,
             })
+            losses_Q.to_pickle(
+                os.path.join(results_dir, f'dataframe_losses_#s-{ns}_%i-{ni * 100}_#f-{nf}.pickle'))
 
             sns.set_style('whitegrid')
             plt.figure(figsize=[6, 4])
@@ -187,7 +203,7 @@ def main():
             sns.lineplot('epoch', 'deep-dual', data=losses_Q, label='deep-dual', ci=99)
             sns.lineplot('epoch', 'kmeans', data=losses_Q, label='kmeans', ci=99)
             plt.yscale('log', basey=10)
-            plt.ylim(bottom=0, top=10000)
+            # plt.ylim(bottom=0, top=1000000)
             plt.ylabel('Q')
             plt.title(f'{dataset}_f_{nf}')
             plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.2), ncol=4)
@@ -225,6 +241,7 @@ def main():
         sns.lineplot('number_feature', 'deep-dual', data=accuracies, label='Deep-DBGC', ci=99)
         sns.lineplot('number_feature', 'kmeans', data=accuracies, label='k-Means', ci=99)
         plt.xscale('log', basex=10)
+        plt.xticks(n_features)
         plt.ylabel('Accuracy')
         plt.title(f'Accuracies on Blobs #s: {ns}, %i: {ni * 100}')
         plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.2), ncol=4)

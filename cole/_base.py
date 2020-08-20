@@ -28,7 +28,7 @@ class BaseModel(Model):
         pbar = tqdm(range(epochs)) if verbose else None
         x = tf.Variable(X, dtype='float32')
         self.loss_ = []
-        for epoch in pbar:
+        for epoch in range(epochs):
             with tf.GradientTape() as tape:
                 y_latent = self(x, training=True)  # Forward pass
                 loss = quantization(y_latent, self.base_model.weights[-1])
@@ -43,5 +43,6 @@ class BaseModel(Model):
             self.loss_.append(loss.numpy())
 
             if verbose:
+                pbar.update(1)
                 pbar.set_description(f"Epoch: {epoch+1} - Loss: {loss.numpy():.2f}")
         return self
