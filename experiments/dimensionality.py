@@ -15,8 +15,8 @@ from sklearn.preprocessing import StandardScaler
 from tensorflow.keras import Input
 from tqdm import tqdm
 
-from cole import BaseModel, DualModel, quantization
-from cole._utils import score, compute_graph
+from cola import BaseModel, DualModel, quantization
+from cola._utils import score, compute_graph
 
 
 def main():
@@ -77,7 +77,7 @@ def main():
             lmb_dual = 0  # 0.01
             lmb_base = 0  # 0.01
             # repetitions = 10
-            repetitions = 5
+            repetitions = 1
 
             acc_base = []
             acc_dual = []
@@ -96,7 +96,12 @@ def main():
                 X, y = make_classification(n_samples=ns, n_features=nf, class_sep=10,
                                            n_informative=ni2, n_redundant=0, hypercube=True,
                                            n_classes=2, n_clusters_per_class=1, random_state=i)
+
                 X = StandardScaler().fit_transform(X)
+
+                u, s, vh = np.linalg.svd(X)
+                print(f'ns: {ns} | nf: {nf} | max s: {np.max(s)} - min s: {np.min(s)}')
+                continue
 
                 # Base
                 print("\n\nBase Model")

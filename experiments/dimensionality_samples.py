@@ -13,8 +13,8 @@ from sklearn.preprocessing import StandardScaler
 from tensorflow.keras import Input
 from tqdm import tqdm
 
-from cole import BaseModel, DualModel, quantization
-from cole._utils import score, compute_graph
+from cola import BaseModel, DualModel, quantization
+from cola._utils import score, compute_graph
 
 
 def main():

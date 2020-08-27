@@ -1,47 +1,77 @@
-Deep Topological Learning (DeepTL)
+Gradient-based Competitive Learning (COLA)
 ======================================================
 
-DeepTL is a Python package providing an easy-to-use software
-for learning complex topologies with neural networks.
-
-DeepTL networks are based on a novel theory (`the duality theory`)
-bridging
-two research fields which are usually thought as disjointed:
-gradient-based and competitive
-neighborhood-based learning.
+COLA is a Python package containing the implementation of two
+gradient-based competitive layers which can be used on top of deep
+learning models for unsupervised tasks.
 
 
-Examples on benchmark datasets
---------------------------------
+Examples
+----------
+
+Dual Competitive Layer (DCL)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 .. list-table::
 
-    * - .. figure:: https://github.com/pietrobarbiero/deep-topological-learning/blob/master/Spiral_dual.png
-            :height: 100px
+    * - .. figure:: https://github.com/pietrobarbiero/deep-topological-learning/blob/master/test-results/circles_dynamic_dual.png
+            :height: 200px
 
-      - .. image:: https://github.com/pietrobarbiero/deep-topological-learning/blob/master/Circles_dual.png
-            :height: 100px
-
-      - .. image:: https://github.com/pietrobarbiero/deep-topological-learning/blob/master/Moons_dual.png
-            :height: 100px
+      - .. image:: https://github.com/pietrobarbiero/deep-topological-learning/blob/master/test-results/circles_scatter_dual.png
+            :height: 200px
 
 
+Vanilla Competitive Layer (VCL)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Using DeepTL
+.. list-table::
+
+    * - .. figure:: https://github.com/pietrobarbiero/deep-topological-learning/blob/master/test-results/circles_dynamic_vanilla.png
+            :height: 200px
+
+      - .. image:: https://github.com/pietrobarbiero/deep-topological-learning/blob/master/test-results/circles_scatter_vanilla.png
+            :height: 200px
+
+
+
+Using COLA
 ---------------
 
 .. code:: python
 
-    from deeptl import DeepTopologicalClustering
+    from cola import DualModel, plot_confusion_matrix, scatterplot, scatterplot_dynamic
 
     X, y = ... # load dataset
 
-    # load and fit the neural model
-    model = DeepTopologicalClustering()
-    model.fit(X)
+    # load custom tensorflow layers
+    inputs = Input(shape=(d,), name='input')
+    ...
+    outputs = ...
 
-    # compute the final graph and plot the result
-    model.compute_graph()
-    model.plot_graph(y)
+    # instantiate the dual model
+    n = X.shape[0] # number of samples
+    k = ... # upper bound of the desired number of prototypes
+    model = DualModel(n_samples=n, k_prototypes=k, inputs=inputs, outputs=outputs, deep=False)
+    model.compile(optimizer=optimizer)
+    model.fit(X, y, epochs=epochs)
+
+    # plot prototype dynamics
+    plt.figure()
+    scatterplot_dynamic(X, model.prototypes_, y, valid=True)
+    plt.show()
+
+    # plot the confusion matrix
+    # considering the prototypes estimated in the last epoch
+    plt.figure()
+    plot_confusion_matrix(x_pred, model.prototypes[-1], y)
+    plt.show()
+
+    # plot the estimated topology
+    # considering the prototypes estimated in the last epoch
+    plt.figure()
+    scatterplot(x_pred, model.prototypes[-1], y, valid=True)
+    plt.show()
+
 
 
 Authors

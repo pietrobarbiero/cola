@@ -113,6 +113,52 @@ def scatterplot(X, prototypes, y, valid=True, links=True):
         nx.draw_networkx_edges(G, pos=pos, width=2, edge_color=c)
     ax.axis('off')
     plt.tight_layout()
+    return ax
+
+
+def scatterplot_dynamic(X, prototypes_list, y, valid=True):
+    ax = scatterplot(X, prototypes_list[-1], y, valid=True, links=False)
+    G = compute_graph(X, prototypes_list[-1])
+    c = '#00838F'
+    cmap = sns.color_palette(sns.color_palette("hls", len(set(y))))
+    u, s, vh = np.linalg.svd(X)
+
+    for e, prototypes in enumerate(prototypes_list):
+        if X.shape[1] > 2:
+            tsne = TSNE(n_components=2, random_state=42)
+            M_list = [X]
+            nodes_idx = []
+            nodes_number = []
+            for i, node in enumerate(G.nodes):
+                nodes_idx.append(i)
+                nodes_number.append(node)
+                M_list.append(prototypes[:, node].reshape(1, -1))
+            M = np.concatenate(M_list)
+            Mp = tsne.fit_transform(M)
+            Xp = Mp[:X.shape[0]]
+            Wp = Mp[X.shape[0]:]
+            pos = {}
+            for i in range(len(Wp)):
+                pos[nodes_number[i]] = Wp[nodes_idx[i]].reshape(1, -1)[0]
+        else:
+            Xp = X
+            Wp = prototypes.T
+            pos = {}
+            for i in G.nodes:
+                pos[i] = prototypes[:, i]
+
+        if valid:
+            Wp = Wp[G.nodes]
+
+        if e == 0:
+            plt.scatter(Wp[:, 0], Wp[:, 1], s=200, c=c, alpha=0.3, edgecolor=c, linewidth=3)
+            # plt.scatter(Wp[:, 0], Wp[:, 1], s=200, edgecolor=c)
+        else:
+            plt.scatter(Wp[:, 0], Wp[:, 1], s=1, c=c)
+
+    plt.quiver(0, 0, vh[0, 0], vh[1, 0], color=['r'])
+    plt.quiver(0, 0, vh[0, 1], vh[1, 1], color=['r'])
+    plt.tight_layout()
 
 
 def squared_dist(A, B):

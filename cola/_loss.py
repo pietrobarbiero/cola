@@ -29,22 +29,28 @@ def quantization(input, output):
 
 def quantization_fast(input, output, y, O, epoch):
     # TODO:
-    # Q = norm(X[i] - output[j]) * O[i,j]
     D = squared_dist(input, tf.transpose(output))
-    D2 = tf.multiply(D, O)
-    # togliere il bias
-    Q = tf.norm(D2)
+    d_min = tf.math.reduce_min(D, axis=1)
+    Q = tf.norm(d_min)
 
-    # classic
-    # mettere a zero tutto ciò che non è nel voronoi
-    # togliere il bias
     # D = squared_dist(input, tf.transpose(output))
+    # O2 = tf.cast(O > 0, dtype=np.float32)
+    # D2 = tf.multiply(D, O2)
+    # # togliere il bias
+    # Q = tf.norm(D2)
+    #
+    # # classic
+    # # mettere a zero tutto ciò che non è nel voronoi
+    # # togliere il bias
+    # D = squared_dist(input, tf.transpose(output))
+    # d2_min = tf.math.argmin(D, axis=1)
+    # o2 = O[d2_min]
     # d_min = tf.math.reduce_min(D, axis=1)
     # Q = tf.norm(d_min)
 
     import matplotlib.pyplot as plt
     import seaborn as sns
-    if (epoch % 100) == 0:
+    if (epoch % 700) == 0 and epoch > 0:
     # if True:
         # plt.figure()
         # plt.subplot(121)
@@ -71,30 +77,50 @@ def quantization_fast(input, output, y, O, epoch):
         # plt.savefig(f'voronoi_{epoch}.png')
         plt.show()
 
-        # plt.figure()
-        # plt.scatter(input.numpy()[y==0, 0], input.numpy()[y==0, 1], c='r', alpha=0.5)
-        # plt.scatter(input.numpy()[y==1, 0], input.numpy()[y==1, 1], c='g', alpha=0.5)
-        # plt.scatter(input.numpy()[y==2, 0], input.numpy()[y==2, 1], c='b', alpha=0.5)
-        # plt.scatter(output[0, 0], output[1, 0], c='r', s=200)
-        # plt.scatter(output[0, 1], output[1, 1], c='g', s=200)
-        # plt.scatter(output[0, 2], output[1, 2], c='b', s=200)
-        # plt.show()
+        print()
 
-        # t1 = np.arange(sum(y==0))
-        # t2 = np.arange(sum(y==1))
-        # t3 = np.arange(sum(y==2))
-        # plt.figure()
-        # plt.plot(t1, O.numpy()[y==0, 0], c='r')
-        # plt.plot(t2, O.numpy()[y==1, 0], c='g')
-        # plt.plot(t3, O.numpy()[y==2, 0], c='b')
-        # plt.show()
-        # plt.figure()
-        # plt.plot(t1, O.numpy()[y==1, 0], c='r')
-        # plt.plot(t1, O.numpy()[y==1, 1], c='g')
-        # plt.plot(t1, O.numpy()[y==1, 2], c='b')
-        # plt.show()
+        plt.figure()
+        plt.scatter(input.numpy()[y==0, 0], input.numpy()[y==0, 1], c='r', alpha=0.5)
+        plt.scatter(input.numpy()[y==1, 0], input.numpy()[y==1, 1], c='g', alpha=0.5)
+        plt.scatter(input.numpy()[y==2, 0], input.numpy()[y==2, 1], c='b', alpha=0.5)
+        plt.scatter(output[0, 0], output[1, 0], c='r', s=200)
+        plt.scatter(output[0, 1], output[1, 1], c='g', s=200)
+        plt.scatter(output[0, 2], output[1, 2], c='b', s=200)
+        plt.savefig('cluster_color.png')
+        plt.show()
+
+        t1 = np.arange(sum(y==0))
+        t2 = np.arange(sum(y==1))
+        t3 = np.arange(sum(y==2))
+        plt.figure()
+        plt.plot(t1, O.numpy()[y==0, 0], c='r')
+        plt.plot(t2, O.numpy()[y==1, 0], c='g')
+        plt.plot(t3, O.numpy()[y==2, 0], c='b')
+        plt.show()
+
+        plt.figure()
+        plt.plot(t1, O.numpy()[y==0, 0], c='r')
+        plt.plot(t1, O.numpy()[y==0, 1], c='g')
+        plt.plot(t1, O.numpy()[y==0, 2], c='b')
+        plt.title('Cluster red')
+        plt.savefig('cluster_red.png')
+        plt.show()
+        plt.figure()
+        plt.plot(t1, O.numpy()[y==1, 0], c='r')
+        plt.plot(t1, O.numpy()[y==1, 1], c='g')
+        plt.plot(t1, O.numpy()[y==1, 2], c='b')
+        plt.title('Cluster green')
+        plt.savefig('cluster_green.png')
+        plt.show()
+        plt.figure()
+        plt.plot(t1, O.numpy()[y==2, 0], c='r')
+        plt.plot(t1, O.numpy()[y==2, 1], c='g')
+        plt.plot(t1, O.numpy()[y==2, 2], c='b')
+        plt.title('Cluster blue')
+        plt.savefig('cluster_blue.png')
+        plt.show()
     #
-    #     print()
+        print()
 
     return Q
 

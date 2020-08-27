@@ -30,6 +30,7 @@ class DualModel(Model):
         pbar = tqdm(range(epochs)) if verbose else None
         x = tf.Variable(X, dtype='float32')
         self.loss_ = []
+        self.prototypes_ = []
         for epoch in range(epochs):
             with tf.GradientTape() as tape:
                 y_latent = self(x, training=False)  # Forward pass
@@ -47,6 +48,8 @@ class DualModel(Model):
             # Compute our own metrics
             loss_tracker.update_state(loss)
             self.loss_.append(loss.numpy())
+            self.prototypes_.append(y_pred.numpy())
+
             if verbose:
                 pbar.set_description(f"Epoch: {epoch+1} - Loss: {loss.numpy():.2f}")
                 pbar.update(1)

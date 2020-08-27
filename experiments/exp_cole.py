@@ -19,7 +19,7 @@ import tensorflow as tf
 from tensorflow.keras import Input
 from tensorflow.keras.models import Model
 
-from cole import DualModel, quantization, plot_confusion_matrix, \
+from cola import DualModel, quantization, plot_confusion_matrix, \
     scatterplot, compute_graph, BaseModel
 
 
@@ -29,8 +29,7 @@ def main():
         os.makedirs(results_dir)
 
     n_samples = 30
-    noisy_circles = make_circles(n_samples=n_samples, factor=.5,
-                                 noise=.05)
+    noisy_circles = make_circles(n_samples=n_samples, factor=.5, noise=.05)
     noisy_moons = make_moons(n_samples=n_samples, noise=.05)
     blobs = make_blobs(n_samples=n_samples, centers=3, random_state=8)
     no_structure = np.random.rand(n_samples, 2), None
@@ -135,7 +134,7 @@ def main():
         latent_dim = 2
         k = 3
         lr = 0.008
-        epochs = 300
+        epochs = 800
         lbd = 0.01
 
         # inputs = Input(shape=(d,), name='input')
@@ -167,15 +166,15 @@ def main():
         model.compile(optimizer=optimizer)
         model.summary()
         model.fit(X, y, epochs=epochs)
-        x_pred = model.predict(X)
-        prototypes = model.dual_model.predict(x_pred.T)
-        G = compute_graph(x_pred, prototypes)
+        # x_pred = model.predict(X)
+        # prototypes = model.dual_model.predict(x_pred.T)
+        # G = compute_graph(x_pred, prototypes)
         # plt.figure()
         # plot_confusion_matrix(x_pred, prototypes, y)
         # plt.show()
-        plt.figure()
-        scatterplot(x_pred, prototypes, y, valid=True)
-        plt.show()
+        # plt.figure()
+        # scatterplot(x_pred, prototypes, y, valid=True)
+        # plt.show()
 
         # k1 = len(G.nodes)
         # k_means = KMeans(n_clusters=k1)

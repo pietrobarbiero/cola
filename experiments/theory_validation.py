@@ -15,7 +15,11 @@ import time
 import logging
 import tensorflow as tf
 
-from deeptl import DeepCompetitiveLayer, DeepTopologicalClustering
+from tensorflow.keras import Input
+from tqdm import tqdm
+
+from cola import BaseModel, DualModel, quantization
+from cola._utils import score, compute_graph, scatterplot, scatterplot_dynamic
 
 
 def _squared_dist(A, B):
@@ -78,11 +82,11 @@ def main():
 
     datasets = {
         # "digits": (x_digits, y_digits),
-        "Spiral": (X_spiral, y_spiral),
-        "Circles": noisy_circles,
+        # "Spiral": (X_spiral, y_spiral),
+        # "Circles": noisy_circles,
         "Moons": noisy_moons,
-        "Blobs (low)": (Xl, yl),
-        "Blobs (high)": (Xh, yh),
+        # "Blobs (low)": (Xl, yl),
+        # "Blobs (high)": (Xh, yh),
         # "gabri": (X_gabri, y_gabri),
         # "Ellipsoids": aniso,
         # "Blobs": blobs,
@@ -96,13 +100,18 @@ def main():
         X, y = data
         X = StandardScaler().fit_transform(X)
 
-        N = 40
-        num_epochs = 400
-        lr_dual = 0.0008
-        lr_standard = 0.008
+        # u, s, vh = np.linalg.svd(X)
+        # print(f'dataset: {dataset} | max s: {np.max(s)} - min s: {np.min(s)}')
+        # continue
+
+        ns, nf = X.shape
+        k = 40
+        epochs = 800
+        lr_dual = 0.000008
+        lr_base = 0.008
         lmb_dual = 0.01
         lmb_standard = 0.01
-        repetitions = 5
+        repetitions = 1
 
         kmeans_losses = []
         mlp_losses = []
@@ -117,150 +126,33 @@ def main():
         trans_nodes = []
         steps = []
         for i in range(repetitions):
-            model_mlp = DeepCompetitiveLayer(verbose=False, lmb=lmb_standard,
-                                             N=N, num_epochs=num_epochs, lr=lr_standard)
-            start_time = time.time()
-            model_mlp.fit(X)
-            mlp_time.append(time.time() - start_time)
-            # model_mlp.compute_sample_graph()
-            model_mlp.compute_graph()
-            # model_mlp.plot_adjacency_matrix()
-            model_mlp.plot_graph(y, os.path.join(results_dir, f"{dataset}_{i}_standard.pdf"))
-            model_mlp.plot_graph(y, os.path.join(results_dir, f"{dataset}_standard.png"))
-            # model_mlp.plot_sample_graph(y, os.path.join(results_dir, f"{dataset}_samples_standard.pdf"))
-            mlp_losses.extend(model_mlp.loss_vals)
-            mlp_loss_Q.extend(model_mlp.loss_Q_)
-            mlp_loss_E.extend(model_mlp.loss_E_)
-            mlp_nodes.extend(model_mlp.node_list_)
+            inputs = Input(shape=(nf,), name='input')
+            model = BaseModel(n_features=nf, k_prototypes=k, deep=False, inputs=inputs, outputs=inputs)
+            optimizer = tf.keras.optimizers.Adam(learning_rate=lr_base)
+            model.compile(optimizer=optimizer)
+            # model.layers[1].summary()
+            model.fit(X, y, epochs=epochs, verbose=False)
+            prototypes = model.base_model.weights[-1].numpy()
+            plt.figure()
+            scatterplot_dynamic(X, model.prototypes_, y, valid=True)
+            plt.savefig(f'{dataset}_dynamic_vanilla.pdf')
+            plt.savefig(f'{dataset}_dynamic_vanilla.png')
+            plt.show()
 
-            # for iter in range(num_epochs+1):
-            #     # model_km = KMeans(n_clusters=model_trans.node_list_[-1], max_iter=num_epochs).fit(X)
-            #     model_km = KMeans(n_clusters=N, n_init=5, max_iter=num_epochs, random_state=42).fit(X)
-            #     D = _squared_dist(tf.Variable(X), tf.Variable(model_km.cluster_centers_))
-            #     d_min = tf.math.reduce_min(D, axis=1)
-            #     loss = tf.norm(d_min).numpy()
-            #     kmeans_losses.append(loss)
-            #     print(f'K-means: iteration {iter}/{num_epochs} | loss: {loss:.4f}')
-            # # plt.figure(figsize=[5, 4])
-            # # fig, ax = plt.subplots()
-            # # cmap = sns.color_palette(sns.color_palette("hls", len(set(y))))
-            # # sns.scatterplot(X[:, 0], X[:, 1], hue=y, palette=cmap, hue_order=set(y), alpha=0.3, legend=False)
-            # # c = '#00838F'
-            # # plt.scatter(model_km.cluster_centers_[:, 0], model_km.cluster_centers_[:, 1], c=c, s=200)
-            # # ax.axis('off')
-            # # plt.tight_layout()
-            # # plt.savefig(os.path.join(results_dir, f"{dataset}_{i}_kmeans.pdf"))
-            # # plt.savefig(os.path.join(results_dir, f"{dataset}_{i}_kmeans.png"))
-            # # plt.show()
-            # # plt.clf()
-            # # plt.close()
-            # # gc.collect()
-
-            model_trans = DeepTopologicalClustering(verbose=False, lmb=lmb_dual,
-                                                    N=N, num_epochs=num_epochs, lr=lr_dual)
-            start_time = time.time()
-            model_trans.fit(X)
-            trans_time.append(time.time() - start_time)
-            # model_trans.compute_sample_graph()
-            model_trans.compute_graph()
-            # model_trans.plot_adjacency_matrix()
-            model_trans.plot_graph(y, os.path.join(results_dir, f"{dataset}_{i}_dual.pdf"))
-            model_trans.plot_graph(y, os.path.join(results_dir, f"{dataset}_dual.png"))
-            # model_trans.plot_sample_graph(y, os.path.join(results_dir, f"{dataset}_samples_dual.pdf"))
-            trans_losses.extend(model_trans.loss_vals)
-            trans_loss_Q.extend(model_trans.loss_Q_)
-            trans_loss_E.extend(model_trans.loss_E_)
-            trans_nodes.extend(model_trans.node_list_)
-
-            # return
-
-            steps.extend(np.arange(0, len(model_trans.loss_vals)))
-
-        losses = pd.DataFrame({
-            'epoch': steps,
-            'standard': mlp_losses,
-            'dual': trans_losses,
-        })
-
-        sns.set_style('whitegrid')
-        plt.figure(figsize=[4, 3])
-        sns.lineplot('epoch', 'standard', data=losses, label='standard', ci=99)
-        sns.lineplot('epoch', 'dual', data=losses, label='dual', ci=99)
-        # plt.yscale('log')
-        plt.ylabel('loss')
-        plt.title(f'{dataset}')
-        plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.3), ncol=2)
-        plt.tight_layout()
-        plt.savefig(os.path.join(results_dir, f'{dataset}_loss.png'))
-        plt.savefig(os.path.join(results_dir, f'{dataset}_loss.pdf'))
-        plt.show()
-
-
-        losses_Q = pd.DataFrame({
-            'epoch': steps,
-            'standard': mlp_loss_Q,
-            'dual': trans_loss_Q,
-            # 'kmeans': kmeans_losses,
-        })
-
-        sns.set_style('whitegrid')
-        plt.figure(figsize=[4, 3])
-        sns.lineplot('epoch', 'standard', data=losses_Q, label='standard', ci=99)
-        sns.lineplot('epoch', 'dual', data=losses_Q, label='dual', ci=99)
-        # sns.lineplot('epoch', 'kmeans', data=losses_Q, label='kmeans', ci=99)
-        # plt.yscale('log')
-        plt.ylabel('quantization error')
-        plt.title(f'{dataset}')
-        plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.3), ncol=2)
-        plt.tight_layout()
-        plt.savefig(os.path.join(results_dir, f'{dataset}_loss_q.png'))
-        plt.savefig(os.path.join(results_dir, f'{dataset}_loss_q.pdf'))
-        plt.show()
-
-
-        losses_E = pd.DataFrame({
-            'epoch': steps,
-            'standard': mlp_loss_E,
-            'dual': trans_loss_E,
-        })
-
-        sns.set_style('whitegrid')
-        plt.figure(figsize=[4, 3])
-        sns.lineplot('epoch', 'standard', data=losses_E, label='standard', ci=99)
-        sns.lineplot('epoch', 'dual', data=losses_E, label='dual', ci=99)
-        # plt.yscale('log')
-        plt.ylabel('topological complexity')
-        plt.title(f'{dataset}')
-        plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.3), ncol=2)
-        plt.tight_layout()
-        plt.savefig(os.path.join(results_dir, f'{dataset}_loss_e.png'))
-        plt.savefig(os.path.join(results_dir, f'{dataset}_loss_e.pdf'))
-        plt.show()
-
-
-        nodes = pd.DataFrame({
-            'epoch': steps,
-            'standard': mlp_nodes,
-            'dual': trans_nodes,
-        })
-
-        sns.set_style('whitegrid')
-        plt.figure(figsize=[4, 3])
-        sns.lineplot('epoch', 'standard', data=nodes, label='standard', ci=99)
-        sns.lineplot('epoch', 'dual', data=nodes, label='dual', ci=99)
-        # plt.yscale('log')
-        plt.ylabel('number of prototypes')
-        plt.title(f'{dataset}')
-        plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.3), ncol=2)
-        plt.tight_layout()
-        plt.savefig(os.path.join(results_dir, f'{dataset}_nodes.png'))
-        plt.savefig(os.path.join(results_dir, f'{dataset}_nodes.pdf'))
-        plt.show()
-
-
-        logging.info(f'Analyzing dataset: {dataset}')
-        logging.info(f'Standard competitive layer elapsed time: {np.mean(mlp_time):.2f} +- {np.std(mlp_time):.2f}')
-        logging.info(f'Dual layer elapsed time: {np.mean(trans_time):.2f} +- {np.std(trans_time):.2f}')
+            # Dual
+            print("Dual Model")
+            inputs = Input(shape=(nf,), name='input')
+            model = DualModel(n_samples=ns, k_prototypes=k, deep=False, inputs=inputs, outputs=inputs)
+            optimizer = tf.keras.optimizers.Adam(learning_rate=lr_dual)
+            model.compile(optimizer=optimizer)
+            model.fit(X, y, epochs=epochs, verbose=False)
+            x_pred = model.predict(X)
+            prototypes = model.dual_model.predict(x_pred.T)
+            plt.figure()
+            scatterplot_dynamic(X, model.prototypes_, y, valid=True)
+            plt.savefig(f'{dataset}_dynamic_dual.pdf')
+            plt.savefig(f'{dataset}_dynamic_dual.png')
+            plt.show()
 
 
 if __name__ == "__main__":

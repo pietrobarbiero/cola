@@ -28,6 +28,7 @@ class BaseModel(Model):
         pbar = tqdm(range(epochs)) if verbose else None
         x = tf.Variable(X, dtype='float32')
         self.loss_ = []
+        self.prototypes_ = []
         for epoch in range(epochs):
             with tf.GradientTape() as tape:
                 y_latent = self(x, training=True)  # Forward pass
@@ -41,6 +42,7 @@ class BaseModel(Model):
             # Compute our own metrics
             loss_tracker.update_state(loss)
             self.loss_.append(loss.numpy())
+            self.prototypes_.append(self.base_model.weights[-1].numpy())
 
             if verbose:
                 pbar.update(1)
