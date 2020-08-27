@@ -1,10 +1,13 @@
-Gradient-based Competitive Learning (COLA)
+COLA - Competitive layers for deep learning
 ======================================================
 
-COLA is a Python package containing the implementation of two
+COLA (COmpetitive LAyers) is a Python package providing the implementation of
 gradient-based competitive layers which can be used on top of deep
 learning models for unsupervised tasks.
 
+
+.. image:: https://github.com/pietrobarbiero/deep-topological-learning/blob/master/deep_dual_figure.png
+    :height: 300px
 
 Examples
 ----------
