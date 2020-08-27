@@ -9,6 +9,22 @@ learning models for unsupervised tasks.
 .. image:: https://github.com/pietrobarbiero/deep-topological-learning/blob/master/deep_dual_figure.png
     :height: 300px
 
+
+Theory
+--------
+Theoretical foundations can be found in our paper.
+
+If you find COLA useful in your research, please consider citing the following paper:
+
+    @misc{barbiero2020topological,
+        title={Topological Gradient-based Competitive Learning},
+        author={Pietro Barbiero and Gabriele Ciravegna and Vincenzo Randazzo and Giansalvo Cirrincione},
+        year={2020},
+        eprint={2008.09477},
+        archivePrefix={arXiv},
+        primaryClass={stat.ML}
+    }
+
 Examples
 ----------
 
