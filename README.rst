@@ -14,10 +14,10 @@ Dual Competitive Layer (DCL)
 
 .. list-table::
 
-    * - .. figure:: https://github.com/pietrobarbiero/deep-topological-learning/blob/master/test-results/circles_dynamic_dual.png
+    * - .. figure:: https://github.com/pietrobarbiero/deep-topological-learning/blob/master/test/test-results/circles_dynamic_dual.png
             :height: 200px
 
-      - .. image:: https://github.com/pietrobarbiero/deep-topological-learning/blob/master/test-results/circles_scatter_dual.png
+      - .. image:: https://github.com/pietrobarbiero/deep-topological-learning/blob/master/test/test-results/circles_scatter_dual.png
             :height: 200px
 
 
@@ -26,10 +26,10 @@ Vanilla Competitive Layer (VCL)
 
 .. list-table::
 
-    * - .. figure:: https://github.com/pietrobarbiero/deep-topological-learning/blob/master/test-results/circles_dynamic_vanilla.png
+    * - .. figure:: https://github.com/pietrobarbiero/deep-topological-learning/blob/master/test/test-results/circles_dynamic_vanilla.png
             :height: 200px
 
-      - .. image:: https://github.com/pietrobarbiero/deep-topological-learning/blob/master/test-results/circles_scatter_vanilla.png
+      - .. image:: https://github.com/pietrobarbiero/deep-topological-learning/blob/master/test/test-results/circles_scatter_vanilla.png
             :height: 200px
 
 
@@ -60,13 +60,13 @@ Using COLA
     scatterplot_dynamic(X, model.prototypes_, y, valid=True)
     plt.show()
 
-    # plot the confusion matrix
+    # plot confusion matrix
     # considering the prototypes estimated in the last epoch
     plt.figure()
     plot_confusion_matrix(x_pred, model.prototypes[-1], y)
     plt.show()
 
-    # plot the estimated topology
+    # plot estimated topology
     # considering the prototypes estimated in the last epoch
     plt.figure()
     scatterplot(x_pred, model.prototypes[-1], y, valid=True)
