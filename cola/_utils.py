@@ -116,6 +116,60 @@ def scatterplot(X, prototypes, y, valid=True, links=True):
     return ax
 
 
+def dynamic_decay(X, prototypes_list, is_dual=True, valid=True, scale='linear', c='#00838F'):
+    G = compute_graph(X, prototypes_list[-1])
+    u, s, vh = np.linalg.svd(X)
+
+    Wp_list = []
+    for e, prototypes in enumerate(prototypes_list):
+        if X.shape[1] > 2:
+            tsne = TSNE(n_components=2, random_state=42)
+            M_list = [X]
+            nodes_idx = []
+            nodes_number = []
+            for i, node in enumerate(G.nodes):
+                nodes_idx.append(i)
+                nodes_number.append(node)
+                M_list.append(prototypes[:, node].reshape(1, -1))
+            M = np.concatenate(M_list)
+            Mp = tsne.fit_transform(M)
+            Xp = Mp[:X.shape[0]]
+            Wp = Mp[X.shape[0]:]
+            pos = {}
+            for i in range(len(Wp)):
+                pos[nodes_number[i]] = Wp[nodes_idx[i]].reshape(1, -1)[0]
+        else:
+            Xp = X
+            Wp = prototypes.T
+            pos = {}
+            for i in G.nodes:
+                pos[i] = prototypes[:, i]
+
+        if valid:
+            Wp = Wp[G.nodes]
+
+        # if is_dual:
+        #     Wp_list.append(np.matmul(Wp, vh))
+        # else:
+        Wp_list.append(Wp)
+
+    distances = []
+    for Wp in Wp_list:
+        distances.append(np.linalg.norm(Wp - Wp_list[-1], 2, axis=1))
+
+    sns.set_style('whitegrid')
+    W = np.stack(distances)
+    for i in range(len(G.nodes)):
+        if i%2 == 0:
+            w = W[:, i]
+            sns.lineplot(x=np.arange(len(distances)), y=w, color=c)
+    plt.yscale(scale)
+    plt.ylim([1e-4, 2])
+    plt.xlabel('epoch')
+    plt.ylabel('dynamic')
+    plt.tight_layout()
+
+
 def scatterplot_dynamic(X, prototypes_list, y, valid=True):
     ax = scatterplot(X, prototypes_list[-1], y, valid=True, links=False)
     G = compute_graph(X, prototypes_list[-1])

@@ -19,7 +19,7 @@ from tensorflow.keras import Input
 from tqdm import tqdm
 
 from cola import BaseModel, DualModel, quantization
-from cola._utils import score, compute_graph, scatterplot, scatterplot_dynamic
+from cola._utils import score, compute_graph, scatterplot, scatterplot_dynamic, dynamic_decay
 
 
 def _squared_dist(A, B):
@@ -127,17 +127,27 @@ def main():
         steps = []
         for i in range(repetitions):
             inputs = Input(shape=(nf,), name='input')
-            model = BaseModel(n_features=nf, k_prototypes=k, deep=False, inputs=inputs, outputs=inputs)
+            vanilla = BaseModel(n_features=nf, k_prototypes=k, deep=False, inputs=inputs, outputs=inputs)
             optimizer = tf.keras.optimizers.Adam(learning_rate=lr_base)
-            model.compile(optimizer=optimizer)
+            vanilla.compile(optimizer=optimizer)
             # model.layers[1].summary()
-            model.fit(X, y, epochs=epochs, verbose=False)
-            prototypes = model.base_model.weights[-1].numpy()
-            plt.figure()
-            scatterplot_dynamic(X, model.prototypes_, y, valid=True)
-            plt.savefig(f'{dataset}_dynamic_vanilla.pdf')
-            plt.savefig(f'{dataset}_dynamic_vanilla.png')
-            plt.show()
+            vanilla.fit(X, y, epochs=epochs, verbose=False)
+            prototypes = vanilla.base_model.weights[-1].numpy()
+            # plt.figure(figsize=[4, 3])
+            # dynamic_decay(X, model.prototypes_[:200], dim=0, valid=True, scale='log')
+            # plt.savefig(f'{dataset}_decayX_vanilla.pdf')
+            # plt.savefig(f'{dataset}_decayX_vanilla.png')
+            # plt.show()
+            # plt.figure(figsize=[4, 3])
+            # dynamic_decay(X, vanilla.prototypes_[:40], valid=True, scale='log')
+            # plt.savefig(f'{dataset}_decayY_vanilla.pdf')
+            # plt.savefig(f'{dataset}_decayY_vanilla.png')
+            # plt.show()
+            # plt.figure()
+            # scatterplot_dynamic(X, model.prototypes_, y, valid=True)
+            # plt.savefig(f'{dataset}_dynamic_vanilla.pdf')
+            # plt.savefig(f'{dataset}_dynamic_vanilla.png')
+            # plt.show()
 
             # Dual
             print("Dual Model")
@@ -148,11 +158,22 @@ def main():
             model.fit(X, y, epochs=epochs, verbose=False)
             x_pred = model.predict(X)
             prototypes = model.dual_model.predict(x_pred.T)
-            plt.figure()
-            scatterplot_dynamic(X, model.prototypes_, y, valid=True)
-            plt.savefig(f'{dataset}_dynamic_dual.pdf')
-            plt.savefig(f'{dataset}_dynamic_dual.png')
+            # plt.figure(figsize=[4, 3])
+            # dynamic_decay(X, model.prototypes_[:200], dim=0, valid=True, scale='log')
+            # plt.savefig(f'{dataset}_decayX_dual.pdf')
+            # plt.savefig(f'{dataset}_decayX_dual.png')
+            # plt.show()
+            plt.figure(figsize=[4, 3])
+            dynamic_decay(X, vanilla.prototypes_, is_dual=False, valid=True, scale='log', c='b')
+            dynamic_decay(X, model.prototypes_, valid=True, scale='log', c='r')
+            plt.savefig(f'{dataset}_decayY_dual.pdf')
+            plt.savefig(f'{dataset}_decayY_dual.png')
             plt.show()
+            # plt.figure()
+            # scatterplot_dynamic(X, model.prototypes_, y, valid=True)
+            # plt.savefig(f'{dataset}_dynamic_dual.pdf')
+            # plt.savefig(f'{dataset}_dynamic_dual.png')
+            # plt.show()
 
 
 if __name__ == "__main__":

@@ -14,7 +14,7 @@ Theory
 --------
 Theoretical foundations can be found in our paper.
 
-If you find COLA useful in your research, please consider citing the following paper:
+If you find COLA useful in your research, please consider citing the following paper::
 
     @misc{barbiero2020topological,
         title={Topological Gradient-based Competitive Learning},
