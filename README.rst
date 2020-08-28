@@ -1,6 +1,29 @@
 COLA - Competitive layers for deep learning
 ======================================================
 
+|Build|
+|Coverage|
+
+|PyPI license|
+|PyPI-version|
+
+
+
+.. |Build| image:: https://img.shields.io/travis/pietrobarbiero/cola?label=Master%20Build&style=for-the-badge
+    :alt: Travis (.org)
+    :target: https://travis-ci.org/pietrobarbiero/cola
+
+.. |Coverage| image:: https://img.shields.io/codecov/c/gh/pietrobarbiero/cola?label=Test%20Coverage&style=for-the-badge
+    :alt: Codecov
+    :target: https://codecov.io/gh/pietrobarbiero/cola
+
+.. |PyPI license| image:: https://img.shields.io/pypi/l/deepcola.svg?style=for-the-badge
+   :target: https://pypi.python.org/pypi/deepcola/
+
+.. |PyPI-version| image:: https://img.shields.io/pypi/v/deepcola?style=for-the-badge
+    :alt: PyPI
+    :target: https://pypi.python.org/pypi/deepcola/
+
 COLA (COmpetitive LAyers) is a Python package providing the implementation of
 gradient-based competitive layers which can be used on top of deep
 learning models for unsupervised tasks.
